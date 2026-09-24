@@ -43,7 +43,10 @@ export default async function MarketplacePage() {
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {THEMES.map((t) => {
             const current = tenant?.theme === t.code;
-            const swatch = { "--accent": t.accent } as CSSProperties;
+            const swatch = {
+              "--accent": t.accent,
+              "--accent-ink": t.accentInk,
+            } as CSSProperties;
             return (
               <Card key={t.code}>
                 <CardBody className="space-y-3">
@@ -55,7 +58,7 @@ export default async function MarketplacePage() {
                       className="h-4 w-4 rounded-full ring-2 ring-white/40"
                       style={{ background: t.accent }}
                     />
-                    <span className="font-semibold text-white">
+                    <span className="text-(--accent-ink) font-semibold">
                       {t.name} Preview
                     </span>
                   </div>

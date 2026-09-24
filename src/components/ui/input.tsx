@@ -1,15 +1,41 @@
 import { cn } from "@/lib/utils";
 import type { InputHTMLAttributes, LabelHTMLAttributes, TextareaHTMLAttributes } from "react";
 
-const baseField =
-  "w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 disabled:bg-zinc-100";
+type FieldVariant = "light" | "dark";
 
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn(baseField, "h-11", className)} {...props} />;
+const fieldByVariant: Record<FieldVariant, string> = {
+  light:
+    "border-zinc-300 bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-(--accent) focus:ring-(--accent)/10",
+  dark: "border-white/15 bg-white/[0.06] text-white placeholder:text-zinc-500 focus:border-(--accent-bright) focus:ring-(--accent-bright)/20",
+};
+
+const baseField =
+  "w-full rounded-lg border px-3 text-sm transition-colors duration-150 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60";
+
+export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+  variant?: FieldVariant;
 }
 
-export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={cn(baseField, "min-h-24 py-2", className)} {...props} />;
+export function Input({ className, variant = "light", ...props }: InputProps) {
+  return (
+    <input
+      className={cn(baseField, fieldByVariant[variant], "h-11", className)}
+      {...props}
+    />
+  );
+}
+
+export function Textarea({
+  className,
+  variant = "light",
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { variant?: FieldVariant }) {
+  return (
+    <textarea
+      className={cn(baseField, fieldByVariant[variant], "min-h-24 py-2", className)}
+      {...props}
+    />
+  );
 }
 
 export function Label({ className, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {

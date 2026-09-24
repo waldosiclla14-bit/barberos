@@ -17,24 +17,30 @@ export function LoginForm() {
   return (
     <form action={formAction} className="space-y-4">
       <div>
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email" className="text-zinc-300">
+          Email
+        </Label>
         <Input
           id="email"
           name="email"
           type="email"
           autoComplete="email"
           required
+          variant="dark"
           placeholder="tu@correo.com"
         />
       </div>
       <div>
-        <Label htmlFor="password">Contraseña</Label>
+        <Label htmlFor="password" className="text-zinc-300">
+          Contraseña
+        </Label>
         <Input
           id="password"
           name="password"
           type="password"
           autoComplete="current-password"
           required
+          variant="dark"
           placeholder="••••••••"
         />
       </div>
@@ -42,9 +48,9 @@ export function LoginForm() {
       <Button type="submit" className="w-full" disabled={isPending}>
         {isPending ? "Ingresando…" : "Iniciar sesión"}
       </Button>
-      <p className="text-center text-sm text-zinc-600">
+      <p className="text-center text-sm text-zinc-400">
         ¿No tienes cuenta?{" "}
-        <Link href="/registrar" className="font-semibold text-zinc-900 hover:underline">
+        <Link href="/registrar" className="font-semibold text-(--accent-bright) hover:underline">
           Crea tu barbería
         </Link>
       </p>

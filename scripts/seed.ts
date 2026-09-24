@@ -59,6 +59,7 @@ async function main() {
     data: {
       name: "[DEMO] Barbería Central",
       slug: SLUG,
+      theme: "gold",
       status: "TRIAL",
       trialEndsAt: new Date(Date.now() + 14 * 86400000),
       users: {

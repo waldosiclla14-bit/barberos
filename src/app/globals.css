@@ -5,23 +5,99 @@
   --foreground: #18181b;
   /* Color de marca por defecto (lo redefine el layout por tema del tenant) */
   --accent: #18181b;
+  /* Tinta legible encima de --accent (blanco salvo en acentos claros como el oro) */
+  --accent-ink: #ffffff;
+  /* Variante más clara de marca para fondos oscuros (#0b0b0e) */
+  --accent-bright: #a1a1aa;
+  /* Marca global pre-tenant (landing y auth) */
+  --gold: #c9a227;
+  --gold-bright: #e8c872;
+  /* Superficies oscuras públicas */
+  --dark-bg: #0b0b0e;
+  --dark-panel: #14141a;
+  --dark-line: rgba(255, 255, 255, 0.09);
+  /* Motion tokens */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 150ms;
+  --dur-base: 250ms;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-bright: var(--accent-bright);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Foco visible accesible en todo el sistema */
+/* Foco visible accesible en todo el sistema, fiel a la marca */
 :focus-visible {
-  outline: 2px solid var(--foreground);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* ---- Micro-interacciones (UI animation) ---- */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s var(--ease-out-expo) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out both;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-in,
+  .animate-pulse-soft {
+    animation: none;
+  }
+  .motion-safe\:transition-all,
+  .transition-all,
+  .transition-colors {
+    transition-duration: 0.01ms;
+  }
 }

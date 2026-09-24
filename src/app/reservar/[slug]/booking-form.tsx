@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import {
   publicBookingAction,
   type PublicBookingState,
@@ -32,12 +33,12 @@ export function BookingForm({
 
   if (state.success) {
     return (
-      <div className="rounded-xl border border-green-200 bg-green-50 p-6 text-center">
-        <p className="text-2xl">✅</p>
-        <h2 className="mt-2 text-lg font-bold text-green-900">
-          ¡Reserva confirmada!
+      <div className="rounded-xl border border-(--accent)/40 bg-(--accent)/10 p-6 text-center animate-fade-up">
+        <CheckCircle2 aria-hidden className="mx-auto h-9 w-9 text-(--accent)" />
+        <h2 className="font-display mt-3 text-lg font-semibold uppercase tracking-wide text-(--accent)">
+          Reserva confirmada
         </h2>
-        <p className="mt-1 text-sm text-green-800">
+        <p className="mt-1 text-sm text-zinc-700">
           Te esperamos el{" "}
           <strong>
             {new Date(`${date}T12:00:00`).toLocaleDateString("es-PE", {
@@ -48,7 +49,7 @@ export function BookingForm({
           </strong>{" "}
           a las <strong>{time}</strong>.
         </p>
-        <p className="mt-3 text-xs text-green-700">
+        <p className="mt-3 text-xs text-zinc-500">
           Guarda este mensaje. Si no puedes asistir, avisa con anticipación.
         </p>
       </div>

@@ -4,7 +4,9 @@ export interface ThemeEntry {
   code: string;
   name: string;
   description: string;
-  accent: string; // hex del color de marca
+  accent: string; // hex del color de marca (fondo de CTAs/estados activos)
+  accentInk: string; // tinta legible sobre accent
+  accentBright: string; // variante clara de marca para superficies oscuras
   price: string;
 }
 
@@ -14,13 +16,17 @@ export const THEMES: ThemeEntry[] = [
     name: "Clásico",
     description: "Zinc monocromático, limpio y profesional. Perfecto para empezar.",
     accent: "#18181b",
+    accentInk: "#ffffff",
+    accentBright: "#a1a1aa",
     price: "Gratis",
   },
   {
     code: "gold",
     name: "Oro Barbero",
     description: "Dorado premium para marcas de barbería sofisticadas.",
-    accent: "#b45309",
+    accent: "#c9a227",
+    accentInk: "#1c1917",
+    accentBright: "#e8c872",
     price: "S/ 9.90",
   },
   {
@@ -28,6 +34,8 @@ export const THEMES: ThemeEntry[] = [
     name: "Esmeralda",
     description: "Verde moderno con toques de frescura y estilo.",
     accent: "#047857",
+    accentInk: "#ffffff",
+    accentBright: "#34d399",
     price: "S/ 9.90",
   },
   {
@@ -35,6 +43,8 @@ export const THEMES: ThemeEntry[] = [
     name: "Océano",
     description: "Azul profundo, sobrio y con mucha personalidad.",
     accent: "#1d4ed8",
+    accentInk: "#ffffff",
+    accentBright: "#60a5fa",
     price: "S/ 9.90",
   },
   {
@@ -42,6 +52,8 @@ export const THEMES: ThemeEntry[] = [
     name: "Rubí",
     description: "Rojo vibrante para barberías con energía urbana.",
     accent: "#be123c",
+    accentInk: "#ffffff",
+    accentBright: "#fb7185",
     price: "S/ 9.90",
   },
 ];

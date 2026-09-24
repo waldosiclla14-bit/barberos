@@ -96,7 +96,7 @@ export default async function DashboardPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+        <h1 className="font-display text-3xl font-semibold tracking-wide text-zinc-900">
           Hola, {user.name.split(" ")[0]}
         </h1>
         <p className="mt-1 text-sm text-zinc-600">
@@ -140,7 +140,7 @@ export default async function DashboardPage({
             </p>
             <Link
               href="/agenda"
-              className="mt-2 inline-block text-xs font-semibold text-zinc-900 hover:underline"
+              className="mt-2 inline-block text-xs font-semibold text-(--accent) hover:underline"
             >
               Ver agenda →
             </Link>
@@ -176,7 +176,7 @@ export default async function DashboardPage({
               aria-valuemax={100}
             >
               <div
-                className="h-full rounded-full bg-zinc-900 transition-all"
+                className="h-full rounded-full bg-(--accent) transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -211,7 +211,7 @@ export default async function DashboardPage({
                   {item.href && !item.done && (
                     <Link
                       href={item.href}
-                      className="text-sm font-semibold text-zinc-900 hover:underline"
+                      className="text-sm font-semibold text-(--accent) hover:underline"
                     >
                       Completar
                     </Link>

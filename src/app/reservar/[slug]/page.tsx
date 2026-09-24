@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatPEN, cn } from "@/lib/utils";
-import { themeFor } from "@/lib/themes";
+import { themeFor, type ThemeEntry } from "@/lib/themes";
 import {
   getAvailability,
   MAX_ADVANCE_DAYS,
@@ -63,7 +63,7 @@ export default async function ReservarPage({
     select: { id: true, name: true, allowGuestBooking: true, theme: true },
   });
   if (!tenant || !tenant.allowGuestBooking) notFound();
-  const accent = themeFor(tenant.theme).accent;
+  const theme = themeFor(tenant.theme);
 
   // ---- Paso 1: sede
   const branches = await prisma.branch.findMany({
@@ -80,7 +80,7 @@ export default async function ReservarPage({
 
   if (!branchId) {
     return (
-      <Shell accent={accent}
+      <Shell theme={theme}
       name={tenant.name}>
         <Progress current={1} total={4} />
         <StepTitle step={1} title="Elige una sede" />
@@ -89,7 +89,7 @@ export default async function ReservarPage({
             <Link
               key={b.id}
               href={buildHref(slug, { sede: b.id })}
-              className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm active:bg-zinc-50"
+              className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-(--accent)/60 hover:shadow-md active:bg-zinc-50"
             >
               <p className="font-bold text-zinc-900">{b.name}</p>
               {b.address && (
@@ -105,7 +105,7 @@ export default async function ReservarPage({
   // ---- Paso 2: servicios (formulario GET sin JS)
   if (!sp.servicios) {
     return (
-      <Shell accent={accent}
+      <Shell theme={theme}
       name={tenant.name}>
         <Progress current={2} total={4} />
         <BackLink href={`/reservar/${slug}`} label="Cambiar sede" />
@@ -123,7 +123,7 @@ export default async function ReservarPage({
           })).map((s) => (
             <label
               key={s.id}
-              className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"
+              className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-(--accent)/60 hover:shadow-md"
             >
               <input type="checkbox" name="servicios" value={s.id} className="h-5 w-5 shrink-0" />
               <span className="flex-1 font-medium text-zinc-900">{s.name}</span>
@@ -136,7 +136,7 @@ export default async function ReservarPage({
           ))}
           <button
             type="submit"
-            className="w-full rounded-xl bg-zinc-900 py-3.5 text-base font-bold text-white"
+            className="w-full rounded-xl bg-(--accent) py-3.5 text-base font-bold text-(--accent-ink) transition-all duration-150 hover:brightness-110 active:scale-[0.99]"
           >
             Continuar
           </button>
@@ -169,7 +169,7 @@ export default async function ReservarPage({
 
   if (!sp.fecha) {
     return (
-      <Shell accent={accent}
+      <Shell theme={theme}
       name={tenant.name}>
         <Progress current={3} total={4} />
         <BackLink href={buildHref(slug, { sede: branchId })} label="Cambiar servicios" />
@@ -177,18 +177,18 @@ export default async function ReservarPage({
         <div className="grid gap-3">
           <Link
             href={buildHref(slug, { sede: branchId, servicios: sp.servicios, barbero: "any", fecha: todayLima() })}
-            className="rounded-xl border border-zinc-900 bg-zinc-900 p-4 text-white shadow-sm"
+            className="rounded-xl border-(--accent) bg-(--accent) p-4 text-(--accent-ink) shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md"
           >
             <p className="font-bold">Cualquier barbero disponible</p>
-            <p className="mt-0.5 text-sm text-zinc-300">
-              Te asignamos el primero libre
-            </p>
+<p className="mt-0.5 text-sm text-(--accent-ink)/70">
+                Te asignamos el primero libre
+              </p>
           </Link>
           {barbers.map((b) => (
             <Link
               key={b.id}
               href={buildHref(slug, { sede: branchId, servicios: sp.servicios, barbero: b.id, fecha: todayLima() })}
-              className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"
+              className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-(--accent)/60 hover:shadow-md"
             >
               <p className="font-bold text-zinc-900">{b.displayName}</p>
               {b.specialties && (
@@ -224,7 +224,7 @@ export default async function ReservarPage({
     const days = Array.from({ length: 14 }, (_, i) => addDaysToKey(todayLima(), i));
 
     return (
-      <Shell accent={accent}
+      <Shell theme={theme}
       name={tenant.name}>
         <Progress current={4} total={4} />
         <BackLink href={buildHref(slug, { sede: branchId, servicios: sp.servicios })} label="Cambiar barbero" />
@@ -241,8 +241,8 @@ export default async function ReservarPage({
                 className={cn(
                   "flex w-16 shrink-0 flex-col items-center rounded-xl border py-2.5",
                   d === fecha
-                    ? "border-zinc-900 bg-zinc-900 text-white"
-                    : "border-zinc-200 bg-white text-zinc-700",
+                    ? "border-(--accent) bg-(--accent) text-(--accent-ink) shadow-sm"
+                    : "border-zinc-200 bg-white text-zinc-700 hover:border-(--accent)/50",
                 )}
               >
                 <span className="text-[11px] uppercase">{wd}</span>
@@ -271,7 +271,7 @@ export default async function ReservarPage({
                     fecha,
                     hora: formatHHmm(parts.minutes),
                   })}
-                  className="rounded-xl border border-zinc-200 bg-white py-3 text-center font-bold tabular-nums text-zinc-900 active:bg-zinc-100"
+                  className="rounded-xl border border-zinc-200 bg-white py-3 text-center font-bold tabular-nums text-zinc-900 transition-all duration-150 hover:border-(--accent) hover:text-(--accent) active:scale-[0.98]"
                 >
                   {formatHHmm(parts.minutes)}
                 </Link>
@@ -308,14 +308,14 @@ export default async function ReservarPage({
       : (barbers.find((b) => b.id === barberoParam)?.displayName ?? "");
 
   return (
-    <Shell accent={accent}
+    <Shell theme={theme}
       name={tenant.name}>
       <BackLink
         href={buildHref(slug, { sede: branchId, servicios: sp.servicios, barbero: barberoParam, fecha })}
         label="Cambiar hora"
       />
-      <div className="mb-4 rounded-xl bg-zinc-900 p-4 text-white">
-        <p className="text-xs uppercase tracking-wide text-zinc-400">Tu reserva</p>
+      <div className="border-(--accent) mb-4 rounded-xl bg-(--accent) p-4 text-(--accent-ink)">
+        <p className="text-xs uppercase tracking-wide text-(--accent-ink)/60">Tu reserva</p>
         <p className="mt-1 text-lg font-bold">
           {new Date(`${fecha}T12:00:00`).toLocaleDateString("es-PE", {
             weekday: "long",
@@ -324,7 +324,7 @@ export default async function ReservarPage({
           })}{" "}
           · {hora}
         </p>
-        <ul className="mt-2 space-y-0.5 text-sm text-zinc-300">
+        <ul className="mt-2 space-y-0.5 text-sm text-(--accent-ink)/70">
           {chosenServices.map((s) => (
             <li key={s.name}>
               {s.name} — {s.durationMin} min
@@ -355,24 +355,30 @@ export default async function ReservarPage({
 
 function Shell({
   name,
-  accent,
+  theme,
   children,
 }: {
   name: string;
-  accent: string;
+  theme: ThemeEntry;
   children: ReactNode;
 }) {
-  const style = { "--accent": accent } as CSSProperties;
+  const style = {
+    "--accent": theme.accent,
+    "--accent-ink": theme.accentInk,
+    "--accent-bright": theme.accentBright,
+  } as CSSProperties;
   return (
     <main
-      className="mx-auto w-full max-w-md flex-1 px-4 py-8"
+      className="mx-auto w-full max-w-md flex-1 px-4 py-8 animate-fade-in"
       style={style}
     >
-      <header className="mb-6 text-center">
-        <p className="text-xs font-semibold uppercase tracking-widest text-(--accent)">
+      <header className="mb-6 text-center animate-fade-up">
+        <p className="font-display text-sm font-semibold uppercase tracking-[0.3em] text-(--accent)">
           BARBEROS
         </p>
-        <h1 className="mt-1 text-xl font-bold text-(--accent)">{name}</h1>
+        <h1 className="mt-1 font-display text-2xl font-semibold tracking-wide text-(--accent)">
+          {name}
+        </h1>
       </header>
       <div className="space-y-4">{children}</div>
     </main>
@@ -403,15 +409,18 @@ function Progress({ current, total }: { current: number; total: number }) {
 
 function StepTitle({ step, title }: { step: number; title: string }) {
   return (
-    <h2 className="text-lg font-bold text-zinc-900">
-      {step}. {title}
+    <h2 className="font-display text-xl font-semibold uppercase tracking-wide text-zinc-900">
+      <span className="text-(--accent)">{step}.</span> {title}
     </h2>
   );
 }
 
 function BackLink({ href, label }: { href: string; label: string }) {
   return (
-    <Link href={href} className="inline-block text-sm font-medium text-zinc-500 hover:text-zinc-900">
+    <Link
+      href={href}
+      className="inline-block text-sm font-medium text-zinc-500 transition-colors hover:text-(--accent)"
+    >
       ← {label}
     </Link>
   );
@@ -430,12 +439,12 @@ function Empty({
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-16 text-center">
       <p className="text-sm text-zinc-600">{text}</p>
       {backHref && (
-        <Link href={backHref} className="mt-4 text-sm font-semibold text-zinc-900 underline">
+        <Link href={backHref} className="mt-4 text-sm font-semibold text-(--accent) underline">
           Volver
         </Link>
       )}
       {!backHref && !inline && (
-        <Link href="/" className="mt-4 text-sm font-semibold text-zinc-900 underline">
+        <Link href="/" className="mt-4 text-sm font-semibold text-(--accent) underline">
           Ir al inicio
         </Link>
       )}

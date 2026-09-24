@@ -28,14 +28,18 @@ const NAV_ITEMS: NavItem[] = [
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const { user, tenant } = await requireTenant();
   const theme = themeFor(tenant.theme);
-  const themeStyle = { "--accent": theme.accent } as CSSProperties;
+  const themeStyle = {
+    "--accent": theme.accent,
+    "--accent-ink": theme.accentInk,
+    "--accent-bright": theme.accentBright,
+  } as CSSProperties;
 
   return (
     <div className="flex min-h-dvh flex-col" style={themeStyle}>
-      <header className="border-b border-zinc-200 bg-white">
+      <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/85 backdrop-blur">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link href="/dashboard" className="flex items-center gap-3">
-            <span className="text-base font-bold tracking-tight text-(--accent)">
+            <span className="font-display text-lg font-semibold tracking-[0.14em] text-(--accent)">
               BARBEROS
             </span>
             <span className="hidden text-sm text-zinc-500 sm:inline">
@@ -50,7 +54,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <form action={logoutAction}>
               <button
                 type="submit"
-                className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+                className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-zinc-50"
               >
                 Salir
               </button>

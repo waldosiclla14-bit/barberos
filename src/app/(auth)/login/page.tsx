@@ -9,14 +9,17 @@ export default function LoginPage() {
   return (
     <>
       <div className="mb-8 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+        <p className="font-display text-sm font-semibold uppercase tracking-[0.3em] text-(--accent-bright)">
+          BARBEROS
+        </p>
+        <h1 className="mt-2 font-display text-3xl font-semibold tracking-wide text-white">
           Bienvenido de nuevo
         </h1>
-        <p className="mt-2 text-sm text-zinc-600">
+        <p className="mt-2 text-sm text-zinc-400">
           Ingresa a tu barbería en BARBEROS.
         </p>
       </div>
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)] backdrop-blur sm:p-8">
         <LoginForm />
       </div>
     </>

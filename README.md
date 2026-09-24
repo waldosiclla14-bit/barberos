@@ -3,6 +3,8 @@
 **El sistema operativo para barberías.**
 SaaS multi-tenant para barberías, barbershops y cadenas en Perú.
 
+> Despliegue a producción: ver [DEPLOY.md](DEPLOY.md) (PostgreSQL + Vercel/Render/Fly).
+
 ## Stack
 
 - **Next.js 16** (App Router, Turbopack) + TypeScript + React 19

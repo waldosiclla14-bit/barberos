@@ -18,6 +18,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Generar cliente Prisma
+        run: npx prisma generate
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
@@ -34,7 +36,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx prisma db push --skip-generate
+      - name: Generar cliente Prisma
+        run: npx prisma generate
+      - name: Crear BD SQLite y esquema
+        run: npx prisma db push
       - run: npx tsx scripts/seed.ts
       - run: npx tsx scripts/test-fase2.ts
       - run: npx tsx scripts/test-flujo.ts

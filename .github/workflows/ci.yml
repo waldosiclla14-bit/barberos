@@ -20,6 +20,8 @@ jobs:
       - run: npm ci
       - name: Generar cliente Prisma
         run: npx prisma generate
+      - name: Generar tipado de rutas (typegen)
+        run: npx next typegen
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build

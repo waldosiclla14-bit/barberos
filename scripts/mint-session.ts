@@ -1,11 +1,10 @@
 // Verifica/minta sesión OWNER y devuelve IDs para smoke HTTP.
 import "dotenv/config";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { createPrismaAdapter } from "../src/lib/db-adapters";
 import { PrismaClient } from "../src/generated/prisma/client";
 import crypto from "node:crypto";
 
-const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient({ adapter: createPrismaAdapter(process.env.DATABASE_URL!) });
 
 async function main() {
   const sessions = await prisma.session.findMany({

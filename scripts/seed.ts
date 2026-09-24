@@ -5,13 +5,12 @@
 // Uso: npm run db:seed
 
 import "dotenv/config";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { createPrismaAdapter } from "../src/lib/db-adapters";
 import { PrismaClient } from "../src/generated/prisma/client";
 import bcrypt from "bcryptjs";
 import { addDaysToKey, limaToUTC, parseDateKey } from "../src/lib/scheduling/time";
 
-const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient({ adapter: createPrismaAdapter(process.env.DATABASE_URL!) });
 
 const SLUG = "demo-barberia-central";
 const OWNER_EMAIL = "demo@barberos.pe";

@@ -1,11 +1,10 @@
 // E2E FASE 7: crea una cita por API pública y verifica el MessageLog de confirmación.
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { createPrismaAdapter } from "../src/lib/db-adapters";
 import { spawnSync } from "node:child_process";
 
-const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient({ adapter: createPrismaAdapter(process.env.DATABASE_URL!) });
 
 async function main() {
   const tenant = await prisma.tenant.findUniqueOrThrow({

@@ -47,6 +47,10 @@ next-env.d.ts
 *.sqlite
 *.sqlite-journal
 
+# schema postgres derivado del canónico (regenerar con scripts/prepare-pg.ts)
+/prisma/schema.pg.prisma
+/prisma/migrations-pg/
+
 # herramientas del agente (locales de cada máquina)
 /.agents
 /.claude

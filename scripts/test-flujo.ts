@@ -1,12 +1,11 @@
 // E2E FLUJO (FASE 4 + 6): ventas con puntos y cuadre de caja.
 // Requiere el seed de demo (`npm run db:seed`). Es idempotente y se autolimpia.
 import "dotenv/config";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { createPrismaAdapter } from "../src/lib/db-adapters";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { createSale } from "../src/lib/sales";
 
-const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient({ adapter: createPrismaAdapter(process.env.DATABASE_URL!) });
 
 const SLUG = "demo-barberia-central";
 const TEST = "FLUJO Demo";

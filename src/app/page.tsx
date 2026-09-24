@@ -45,16 +45,18 @@ export default function LandingPage() {
       className="flex flex-1 flex-col bg-(--dark-bg) text-zinc-100"
       style={goldStyle}
     >
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6 animate-fade-in">
+      <header className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-6 py-6 animate-fade-in sm:flex-row">
         <span className="font-display text-xl font-semibold tracking-[0.16em] text-(--accent-bright)">
           BARBEROS
         </span>
-        <nav className="flex items-center gap-2">
-          <Link href="/login">
-            <Button variant="ghost-light">Iniciar sesión</Button>
+        <nav className="flex w-full items-center justify-center gap-2 sm:w-auto">
+          <Link href="/login" className="flex-1 sm:flex-none">
+            <Button variant="ghost-light" className="w-full sm:w-auto">
+              Iniciar sesión
+            </Button>
           </Link>
-          <Link href="/registrar">
-            <Button>Crear mi barbería</Button>
+          <Link href="/registrar" className="flex-1 sm:flex-none">
+            <Button className="w-full sm:w-auto">Crear mi barbería</Button>
           </Link>
         </nav>
       </header>

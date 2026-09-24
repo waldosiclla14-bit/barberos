@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { Loader2 } from "lucide-react";
 import { askAction, type AskState } from "@/app/actions/ia";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,22 +25,28 @@ export function AssistantChat() {
       <div
         role="log"
         aria-live="polite"
-        className="min-h-[220px] rounded-lg border border-zinc-200 bg-zinc-50 p-4"
+        className="flex min-h-[220px] flex-col gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-4"
       >
-        <p className="rounded-lg bg-(--accent) px-3 py-2 text-sm font-medium text-(--accent-ink)">
+        <p className="self-start rounded-xl border-(--accent) bg-(--accent) px-3 py-2 text-sm text-(--accent-ink)">
           Hola 👋 Soy el asistente de tu barbería. Pregúntame por precios, horarios,
           promos o stock.
         </p>
-        {state.reply && (
-          <p className="mt-3 whitespace-pre-line rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-zinc-900">
-            <span className="mr-1 rounded bg-green-600 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">
+        {state.intent && state.reply && (
+          <p className="self-end whitespace-pre-line rounded-xl rounded-tr-sm border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm">
+            <span className="mr-2 inline-block rounded bg-(--accent) px-1.5 py-0.5 text-[10px] font-bold uppercase text-(--accent-ink)">
               {state.intent}
             </span>
             {state.reply}
           </p>
         )}
+        {isPending && (
+          <p className="flex items-center gap-2 self-end rounded-xl rounded-tr-sm border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-500 shadow-sm">
+            <Loader2 aria-hidden className="h-4 w-4 animate-spin text-(--accent-text)" />
+            Pensando…
+          </p>
+        )}
         {state.error && (
-          <p role="alert" className="mt-3 text-sm text-red-600">
+          <p role="alert" className="text-sm text-red-600">
             {state.error}
           </p>
         )}
@@ -65,7 +72,7 @@ export function AssistantChat() {
               name="message"
               value={s}
               disabled={isPending}
-              className="rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
+              className="rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:border-(--accent)/60 hover:bg-white disabled:opacity-50"
             >
               {s}
             </button>

@@ -224,6 +224,58 @@ export async function sendAppointmentConfirmation(
   }
 }
 
+/** Envía la notificación REBOOK al confirmar una reprogramación (agenda). */
+export async function sendAppointmentRebook(
+  tenantId: string,
+  appointmentId: string,
+): Promise<void> {
+  try {
+    const { prisma: db } = await import("@/lib/prisma");
+    const appt = await db.appointment.findUnique({
+      where: { id: appointmentId },
+      select: {
+        tenantId: true,
+        startsAt: true,
+        customer: { select: { id: true, name: true, phone: true } },
+        barber: { select: { displayName: true } },
+        tenant: { select: { name: true } },
+      },
+    });
+    if (!appt || !appt.customer) return;
+    const tpl = await templateFor(appt.tenantId, "REBOOK");
+    const body = render(
+      tpl?.body ??
+        "{{customerName}}, tu cita en {{tenantName}} fue reagendada para {{date}} a las {{time}} con {{barber}}. ¡Gracias!",
+      {
+        customerName: appt.customer.name,
+        tenantName: appt.tenant.name,
+        barber: appt.barber.displayName,
+        date: appt.startsAt.toLocaleDateString("es-PE", {
+          timeZone: LIMA_TZ,
+          weekday: "long",
+          day: "numeric",
+          month: "short",
+        }),
+        time: appt.startsAt.toLocaleTimeString("es-PE", {
+          timeZone: LIMA_TZ,
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      },
+    );
+    await logMessage({
+      tenantId: appt.tenantId,
+      customerId: appt.customer.id,
+      channel: tpl?.channel ?? "WHATSAPP",
+      kind: "REBOOK",
+      to: appt.customer.phone,
+      body,
+    });
+  } catch (error) {
+    console.error("[sendAppointmentRebook]", error);
+  }
+}
+
 /** Envía recordatorios de las citas de mañana (Lima). Devuelve conteo. */
 export async function sendReminders(tenantId: string): Promise<SendResult> {
   const tomorrow = limaDayRange(addDaysToKey(todayLima(), 1));

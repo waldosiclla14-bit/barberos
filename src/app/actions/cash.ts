@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireTenant } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 
 export interface CashFormState {
@@ -15,7 +15,7 @@ export async function openCashSessionAction(
   _prev: CashFormState,
   formData: FormData,
 ): Promise<CashFormState> {
-  const auth = await requireTenant();
+  const auth = await requirePermission("cash:manage");
 
   const branchId = String(formData.get("branchId") ?? "");
   const opening = String(formData.get("opening") ?? "").trim();
@@ -34,15 +34,25 @@ export async function openCashSessionAction(
   });
   if (open) return { error: "Ya hay una caja abierta en esta sede." };
 
-  await prisma.cashSession.create({
-    data: {
-      tenantId: auth.tenant.id,
-      branchId,
-      openedById: auth.user.id,
-      openingCents,
-      expectedCents: openingCents,
-      status: "OPEN",
-    },
+  // Re-chequea y crea dentro de una transacción: evita doble apertura
+  // simultánea (TOCTOU) con dos clic seguros.
+  await prisma.$transaction(async (tx) => {
+    const fresh = await tx.cashSession.findFirst({
+      where: { tenantId: auth.tenant.id, branchId, status: "OPEN" },
+      select: { id: true },
+    });
+    if (fresh) throw new Error("ALREADY_OPEN");
+    return tx.cashSession.create({
+      data: {
+        tenantId: auth.tenant.id,
+        branchId,
+        openedById: auth.user.id,
+        openingCents,
+        expectedCents: openingCents,
+        status: "OPEN",
+      },
+      select: { id: true },
+    });
   });
 
   await audit({
@@ -61,7 +71,7 @@ export async function closeCashSessionAction(
   _prev: CashFormState,
   formData: FormData,
 ): Promise<CashFormState> {
-  const auth = await requireTenant();
+  const auth = await requirePermission("cash:manage");
 
   const sessionId = String(formData.get("sessionId") ?? "");
   const closing = String(formData.get("closing") ?? "").trim();
@@ -113,7 +123,7 @@ export async function registerMovementAction(
   _prev: CashFormState,
   formData: FormData,
 ): Promise<CashFormState> {
-  const auth = await requireTenant();
+  const auth = await requirePermission("cash:manage");
 
   const branchId = String(formData.get("branchId") ?? "");
   const sessionId = String(formData.get("sessionId") ?? "");

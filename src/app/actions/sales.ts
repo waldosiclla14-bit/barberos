@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireTenant } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import {
   createSale,
@@ -36,7 +36,7 @@ export async function createSaleAction(
   _prev: SaleFormState,
   formData: FormData,
 ): Promise<SaleFormState> {
-  const auth = await requireTenant();
+  const auth = await requirePermission("sales:create");
 
   const parsed = saleSchema.safeParse({
     branchId: formData.get("branchId"),

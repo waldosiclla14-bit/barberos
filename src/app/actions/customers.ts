@@ -171,7 +171,7 @@ export async function addCustomerNoteAction(
 
 /** Desactiva / reactiva un cliente. */
 export async function toggleCustomerActiveAction(formData: FormData) {
-  const auth = await requireTenant();
+  const auth = await requirePermission("customers:manage");
 
   const id = String(formData.get("customerId") ?? "");
   const customer = await prisma.customer.findFirst({

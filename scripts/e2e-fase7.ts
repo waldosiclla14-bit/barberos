@@ -2,6 +2,7 @@
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { createPrismaAdapter } from "../src/lib/db-adapters";
+import { addDaysToKey, todayLima, limaToUTC, parseDateKey } from "../src/lib/scheduling/time";
 import { spawnSync } from "node:child_process";
 
 const prisma = new PrismaClient({ adapter: createPrismaAdapter(process.env.DATABASE_URL!) });
@@ -24,9 +25,12 @@ async function main() {
     select: { id: true, name: true },
   });
 
-  const starts = new Date();
-  starts.setDate(starts.getDate() + 1);
-  starts.setHours(11, 0, 0, 0);
+  // Hora Lima: 15:00 (dentro del horario 10:00-19:00) del día siguiente,
+  // construida con la TZ de Lima para ser independiente de la del servidor.
+  const tomorrowKey = addDaysToKey(todayLima(), 1);
+  const pk = parseDateKey(tomorrowKey);
+  if (!pk) throw new Error("Fecha inválida");
+  const starts = limaToUTC(pk.y, pk.m, pk.d, 15 * 60);
 
   const before = await prisma.messageLog.count({ where: { tenantId: tenant.id } });
   const body = JSON.stringify({

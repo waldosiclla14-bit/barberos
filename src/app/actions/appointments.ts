@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getAuthContext, requireTenant } from "@/lib/auth/session";
+import { getAuthContext, requirePermission, requireTenant } from "@/lib/auth/session";
 import { hasPermission } from "@/lib/auth/rbac";
 import { audit } from "@/lib/audit";
 import {
@@ -14,7 +14,7 @@ import {
   type Transition,
 } from "@/lib/scheduling/appointments";
 import { parseDateKey, parseHHmm, limaToUTC } from "@/lib/scheduling/time";
-import { sendAppointmentConfirmation } from "@/lib/notifications";
+import { sendAppointmentConfirmation, sendAppointmentRebook } from "@/lib/notifications";
 
 export interface FormState {
   error?: string;
@@ -50,7 +50,7 @@ export async function createInternalAppointmentAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const auth = await requireTenant();
+  const auth = await requirePermission("appointments:manage");
   if (!hasPermission(auth.user.role, "appointments:manage")) {
     return { error: "Sin permiso para crear reservas." };
   }
@@ -189,6 +189,8 @@ export async function rescheduleAppointmentFormAction(
     userId: auth.user.id,
   });
   if (!result.ok) return { error: result.error };
+
+  await sendAppointmentRebook(auth.tenant.id, appointmentId);
 
   revalidatePath("/agenda");
   revalidatePath("/dashboard");

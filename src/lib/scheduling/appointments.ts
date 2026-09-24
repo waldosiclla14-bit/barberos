@@ -116,6 +116,43 @@ export async function createAppointmentSafe(
     return { ok: false, error: "El barbero no ofrece esos servicios." };
   }
 
+  // Horario del día: la sede y el barbero deben atender el día y cubrir la
+  // ventana completa de la cita (misma lógica que el motor de disponibilidad).
+  const parts = toLimaParts(input.startsAt);
+  const { weekday } = parts;
+  const [branchDay, barberDay] = await Promise.all([
+    prisma.branchSchedule.findFirst({
+      where: { branchId: input.branchId, weekday },
+      select: { isClosed: true, openMin: true, closeMin: true },
+    }),
+    prisma.barberSchedule.findFirst({
+      where: { barberId: input.barberId, weekday },
+      select: { startMin: true, endMin: true },
+    }),
+  ]);
+  if (branchDay?.isClosed || !barberDay) {
+    return { ok: false, error: "La sede no atiende ese día." };
+  }
+  const totalDurationMin = services.reduce((a, s) => a + s.durationMin, 0);
+  const totalPriceCents = services.reduce((a, s) => a + s.priceCents, 0);
+  const endsAt = new Date(input.startsAt.getTime() + totalDurationMin * 60 * 1000);
+  if (input.startsAt < new Date()) {
+    return { ok: false, error: "No puedes reservar en el pasado." };
+  }
+  if (endsAt <= new Date()) {
+    return { ok: false, error: "La reserva ya terminó." };
+  }
+  const dayStartMin = Math.max(branchDay?.openMin ?? 0, barberDay.startMin);
+  const dayEndMin = Math.min(
+    branchDay?.closeMin ?? 24 * 60,
+    barberDay.endMin,
+  );
+  const dayStart = limaToUTC(parts.year, parts.month, parts.day, dayStartMin);
+  const dayEnd = limaToUTC(parts.year, parts.month, parts.day, dayEndMin);
+  if (input.startsAt < dayStart || endsAt > dayEnd) {
+    return { ok: false, error: "La sede no atiende en ese horario." };
+  }
+
   // Si llega un customer.id, debe pertenecer al tenant (evita IDOR
   // cross-tenant: notas/visitas/puntos a clientes de otra barbería).
   if (input.customer.id) {
@@ -126,16 +163,6 @@ export async function createAppointmentSafe(
     if (!owner) {
       return { ok: false, error: "Cliente no válido." };
     }
-  }
-
-  const totalDurationMin = services.reduce((a, s) => a + s.durationMin, 0);
-  const totalPriceCents = services.reduce((a, s) => a + s.priceCents, 0);
-  const endsAt = new Date(input.startsAt.getTime() + totalDurationMin * 60 * 1000);
-  if (input.startsAt < new Date()) {
-    return { ok: false, error: "No puedes reservar en el pasado." };
-  }
-  if (endsAt <= new Date()) {
-    return { ok: false, error: "La reserva ya terminó." };
   }
 
   try {

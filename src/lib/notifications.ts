@@ -89,6 +89,39 @@ function customerWhatsapp(customer: { phone: string }): string {
   return `https://wa.me/${fmtPhone(customer.phone).replace(/\D/g, "")}`;
 }
 
+/**
+ * Envío real opcional. Si WHATSAPP_ENABLED=true y WHATSAPP_WEBHOOK_URL está
+ * configurado, POSTea el mensaje al webhook del proveedor (WhatsApp Cloud o
+ * pasarela compatible). Nunca lanza: en demo (o sin webhook) devuelve true y
+ * el envío queda registrado solo en MessageLog.
+ */
+async function deliverMessage(input: {
+  channel: string;
+  kind: string;
+  to: string;
+  body: string;
+}): Promise<boolean> {
+  const webhook = process.env.WHATSAPP_WEBHOOK_URL;
+  if (process.env.WHATSAPP_ENABLED !== "true" || !webhook) return true;
+  try {
+    const res = await fetch(webhook, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        channel: input.channel,
+        kind: input.kind,
+        to: input.to,
+        body: input.body,
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    return res.ok;
+  } catch (error) {
+    console.error("[deliverMessage]", error);
+    return false;
+  }
+}
+
 export async function logMessage(input: {
   tenantId: string;
   customerId?: string | null;
@@ -97,6 +130,7 @@ export async function logMessage(input: {
   to: string;
   body: string;
 }) {
+  const delivered = await deliverMessage(input);
   return prisma.messageLog.create({
     data: {
       tenantId: input.tenantId,
@@ -105,6 +139,7 @@ export async function logMessage(input: {
       kind: input.kind,
       to: input.to,
       body: input.body.slice(0, 1000),
+      status: delivered ? "SENT" : "FAILED",
     },
   });
 }
@@ -256,6 +291,29 @@ function tomorrowEnd(): Date {
   const d = tomorrowStart();
   d.setDate(d.getDate() + 1);
   return d;
+}
+
+/**
+ * Corre los recordatorios de mañana para todos los tenants activos. Usado por
+ * el scheduler externo (ver /api/reminders/run). Nunca lanza por tenant.
+ */
+export async function runRemindersForAllTenants(): Promise<SendResult> {
+  const tenants = await prisma.tenant.findMany({
+    where: { status: { not: "SUSPENDED" } },
+    select: { id: true },
+  });
+  let sent = 0;
+  let skipped = 0;
+  for (const t of tenants) {
+    try {
+      const r = await sendReminders(t.id);
+      sent += r.sent;
+      skipped += r.skipped;
+    } catch (error) {
+      console.error("[runRemindersForAllTenants]", t.id, error);
+    }
+  }
+  return { sent, skipped };
 }
 
 export { customerWhatsapp };

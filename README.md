@@ -60,7 +60,14 @@ y las consultas se filtran siempre por el tenant del usuario autenticado
 ## Fases de desarrollo
 
 1. **Foundation** ✅ — auth, tenants, roles, layout, auditoría
-2. Core — sedes, barberos, servicios, horarios, disponibilidad, reservas
-3. CRM · 4. Ventas/caja/comisiones · 5. Inventario · 6. Fidelización/marketing · 7. WhatsApp/email · 8. IA · 9. Marketplace
+2. **Core** ✅ — sedes, barberos, servicios, horarios, disponibilidad, reservas
+3. **CRM** ✅ — clientes, notas
+4. **Ventas/caja/comisiones** ✅ — ventas, caja, comisiones
+5. **Inventario** ✅ — productos, stock, proveedores
+6. **Fidelización/marketing** ✅ — promociones, puntos/millas
+7. **WhatsApp/email** ✅ — plantillas, confirmaciones y recordatorios (demo registra en
+   `MessageLog`; real via `WHATSAPP_WEBHOOK_URL` + scheduler `/api/reminders/run`)
+8. **IA** ✅ — asistente por reglas con datos reales del tenant (sin LLM externo)
+9. **Marketplace** ✅ — temas e integraciones
 
 Ver `ARCHITECTURE.md` para decisiones técnicas.

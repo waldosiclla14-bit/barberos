@@ -26,6 +26,11 @@ const KIND_LABELS: Record<string, string> = {
 export default async function NotificacionesPage() {
   const auth = await requirePermission("reports:view");
 
+  // Modo de envío: webhook real si WHATSAPP_ENABLED=true y hay webhook; si no, demo.
+  const whatsappEnabled = process.env.WHATSAPP_ENABLED === "true";
+  const webhookUrl = process.env.WHATSAPP_WEBHOOK_URL;
+  const realSending = whatsappEnabled && !!webhookUrl;
+
   // Garantiza plantillas por defecto (idempotente)
   await upsertTemplateDefaults(auth.tenant.id);
 
@@ -58,8 +63,18 @@ export default async function NotificacionesPage() {
           Notificaciones
         </h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Plantillas y envío de recordatorios por WhatsApp / email. (Demo: los envíos
-          se registran y auditan, sin llamadas reales.)
+          Plantillas y envío de recordatorios por WhatsApp / email.
+        </p>
+        <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-600">
+          <span
+            aria-hidden
+            className={`h-1.5 w-1.5 rounded-full ${
+              realSending ? "bg-green-500" : "bg-amber-400"
+            }`}
+          />
+          {realSending
+            ? "Envío real activo (webhook de WhatsApp configurado)"
+            : "Modo demo: los envíos se registran y auditan sin llamadas reales"}
         </p>
       </header>
 

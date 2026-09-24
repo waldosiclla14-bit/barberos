@@ -172,7 +172,8 @@ async function main() {
     where: { id: customer.id },
     select: { loyaltyPoints: true },
   });
-  const expected2 = p1.loyaltyPoints - redeem + Math.floor(SU / pointsPerSol);
+  const expected2 =
+    p1.loyaltyPoints - redeem + Math.floor((SU - redeemCents) / pointsPerSol);
   ok(p2.loyaltyPoints === expected2, `Puntos tras venta 2 = ${p2.loyaltyPoints} (esperado ${expected2})`);
 
   // 4) Guardas

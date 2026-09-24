@@ -81,6 +81,12 @@ export async function createSale(
     if (customer.loyaltyPoints < input.redeemPoints) {
       return { ok: false, error: "El cliente no tiene suficientes puntos." };
     }
+    const maxRedeem = Math.floor(
+      Math.max(0, subtotalCents - input.discountCents) / pointRedeemCents,
+    );
+    if (input.redeemPoints > maxRedeem) {
+      return { ok: false, error: "No puedes canjear más de lo que vale la venta." };
+    }
     redeemCents = input.redeemPoints * pointRedeemCents;
   }
 
@@ -88,7 +94,10 @@ export async function createSale(
     0,
     subtotalCents - input.discountCents - redeemCents,
   );
-  const earnedPoints = Math.floor(subtotalCents / pointsPerSol);
+  // Puntos por lo efectivamente pagado, no por el brutto: evita el loop
+  // "canjeo puntos + re-ganos puntos" (servicios gratis infinitos).
+  const paidCents = Math.max(0, subtotalCents - input.discountCents - redeemCents);
+  const earnedPoints = Math.floor(paidCents / pointsPerSol);
 
   // Resolver comisiones de servicios en bloque
   const serviceIds = input.items
@@ -98,7 +107,7 @@ export async function createSale(
     .map((i) => i.barberId)
     .filter((b): b is string => Boolean(b));
 
-  const [services, overrides, activeBarbers] = await Promise.all([
+  const [services, overrides, activeBarbers, branch] = await Promise.all([
     prisma.service.findMany({
       where: { id: { in: serviceIds }, tenantId: input.tenantId, isActive: true },
       select: { id: true, commissionPctDefault: true },
@@ -111,7 +120,21 @@ export async function createSale(
       where: { id: { in: barberIds }, tenantId: input.tenantId },
       select: { id: true },
     }),
+    prisma.branch.findFirst({
+      where: { id: input.branchId, tenantId: input.tenantId, isActive: true },
+      select: { id: true },
+    }),
   ]);
+
+  // El cliente y la sede deben pertenecer al tenant (evita IDOR cross-tenant).
+  if (input.customerId) {
+    const customer = await prisma.customer.findFirst({
+      where: { id: input.customerId, tenantId: input.tenantId },
+      select: { id: true },
+    });
+    if (!customer) return { ok: false, error: "Cliente no válido." };
+  }
+  if (!branch) return { ok: false, error: "Sede no válida." };
 
   const serviceComm = new Map(services.map((s) => [s.id, s.commissionPctDefault]));
   const overrideKey = (barberId: string, serviceId: string) => `${barberId}:${serviceId}`;
@@ -119,6 +142,58 @@ export async function createSale(
     overrides.map((o) => [overrideKey(o.barberId, o.serviceId), o.commissionPctOverride]),
   );
   const activeBarberSet = new Set(activeBarbers.map((b) => b.id));
+
+  // Precalcular ítems con comisiones; si el total de comisiones excede lo
+  // efectivamente cobrado, se escala proporcionalmente (la casa no paga más
+  // de lo que recauda).
+  const saleItems = input.items.map((item) => {
+    let commissionPct = 0;
+    let commissionCents = 0;
+    if (item.kind === "SERVICE" && item.serviceId && item.barberId) {
+      if (!activeBarberSet.has(item.barberId)) {
+        commissionPct = -1; // marcador de barbero inválido
+      } else {
+        const def = serviceComm.get(item.serviceId) ?? 0;
+        const ovr =
+          overrideMap.get(overrideKey(item.barberId, item.serviceId)) ?? null;
+        commissionPct = Math.round(ovr ?? def);
+        commissionCents = Math.round(
+          (item.unitPriceCents * item.qty * commissionPct) / 100,
+        );
+      }
+    }
+    return {
+      kind: item.kind,
+      serviceId: item.serviceId ?? null,
+      productId: item.productId ?? null,
+      name: item.name ?? "",
+      qty: item.qty,
+      unitPriceCents: item.unitPriceCents,
+      barberId: item.barberId ?? null,
+      commissionPct,
+      commissionCents,
+    };
+  });
+
+  if (saleItems.some((i) => i.commissionPct === -1)) {
+    return { ok: false, error: "Barbero no válido para la venta." };
+  }
+
+  const totalCommissions = saleItems.reduce((a, i) => a + i.commissionCents, 0);
+  if (totalCommissions > totalCents) {
+    const ratio = totalCents / totalCommissions;
+    let assigned = 0;
+    for (let idx = 0; idx < saleItems.length; idx++) {
+      const item = saleItems[idx];
+      if (item.commissionCents === 0) continue;
+      const allocated =
+        idx === saleItems.length - 1
+          ? totalCents - assigned
+          : Math.round(item.commissionCents * ratio);
+      item.commissionCents = Math.max(0, allocated);
+      assigned += item.commissionCents;
+    }
+  }
 
   try {
     const saleId = await prisma.$transaction(async (tx) => {
@@ -135,33 +210,7 @@ export async function createSale(
           paymentMethod: input.paymentMethod,
           soldByUserId: input.soldByUserId ?? null,
           items: {
-            create: input.items.map((item) => {
-              let commissionPct = 0;
-              let commissionCents = 0;
-              if (item.kind === "SERVICE" && item.serviceId && item.barberId) {
-                if (!activeBarberSet.has(item.barberId)) {
-                  throw new Error("BARBER_INVALID");
-                }
-                const def = serviceComm.get(item.serviceId) ?? 0;
-                const ovr =
-                  overrideMap.get(overrideKey(item.barberId, item.serviceId)) ?? null;
-                commissionPct = ovr ?? def;
-                commissionCents = Math.round(
-                  (item.unitPriceCents * item.qty * commissionPct) / 100,
-                );
-              }
-              return {
-                kind: item.kind,
-                serviceId: item.serviceId ?? null,
-                productId: item.productId ?? null,
-                name: item.name ?? "",
-                qty: item.qty,
-                unitPriceCents: item.unitPriceCents,
-                barberId: item.barberId ?? null,
-                commissionPct,
-                commissionCents,
-              };
-            }),
+            create: saleItems,
           },
         },
         select: { id: true },
@@ -210,15 +259,26 @@ export async function createSale(
         });
       }
 
-      // Fidelización: canje y acumulación de puntos del cliente
+      // Fidelización: canje y acumulación de puntos del cliente.
+      // Se revalida el saldo DENTRO de la transacción para evitar la carrera
+      // de doble canje (lectura fuera del tx ya no es vinculante).
       if (input.customerId) {
+        if (input.redeemPoints && input.redeemPoints > 0) {
+          const live = await tx.customer.findFirst({
+            where: { id: input.customerId, tenantId: input.tenantId },
+            select: { loyaltyPoints: true },
+          });
+          if (!live || live.loyaltyPoints < input.redeemPoints) {
+            throw new Error("INSUFFICIENT_POINTS");
+          }
+        }
         const deltas = {
           loyaltyPoints:
             (input.redeemPoints ?? 0) * -1 + earnedPoints,
         };
         if (deltas.loyaltyPoints !== 0) {
-          await tx.customer.update({
-            where: { id: input.customerId },
+          await tx.customer.updateMany({
+            where: { id: input.customerId, tenantId: input.tenantId },
             data: { loyaltyPoints: { increment: deltas.loyaltyPoints } },
           });
         }
@@ -230,6 +290,9 @@ export async function createSale(
     return { ok: true, saleId };
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
+    if (message === "INSUFFICIENT_POINTS") {
+      return { ok: false, error: "El cliente no tiene suficientes puntos." };
+    }
     if (message === "BARBER_INVALID") {
       return { ok: false, error: "Barbero no válido para la venta." };
     }

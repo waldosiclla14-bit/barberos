@@ -23,8 +23,21 @@ export async function createPromotionAction(
   const endsRaw = String(formData.get("endsAt") ?? "").trim();
 
   if (!name) return { error: "Nombre obligatorio." };
-  if (discountPct < 1 || discountPct > 100) {
+  if (!Number.isFinite(discountPct) || discountPct < 1 || discountPct > 100) {
     return { error: "El descuento debe estar entre 1 y 100." };
+  }
+  const parseDate = (raw: string): Date | null => {
+    if (!raw) return null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+    const d = new Date(`${raw}T00:00:00Z`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+  const startsDate = parseDate(startsRaw);
+  const endsDate = parseDate(endsRaw);
+  if (startsRaw && !startsDate) return { error: "Fecha de inicio inválida." };
+  if (endsRaw && !endsDate) return { error: "Fecha de fin inválida." };
+  if (startsDate && endsDate && endsDate < startsDate) {
+    return { error: "La fecha de fin no puede ser anterior al inicio." };
   }
 
   await prisma.promotion.create({
@@ -33,8 +46,8 @@ export async function createPromotionAction(
       name,
       description,
       discountPct,
-      startsAt: startsRaw ? new Date(`${startsRaw}T00:00:00Z`) : null,
-      endsAt: endsRaw ? new Date(`${endsRaw}T23:59:59Z`) : null,
+      startsAt: startsDate ? new Date(`${startsRaw}T00:00:00Z`) : null,
+      endsAt: endsDate ? new Date(`${endsRaw}T23:59:59Z`) : null,
     },
   });
 

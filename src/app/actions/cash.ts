@@ -20,6 +20,11 @@ export async function openCashSessionAction(
   const branchId = String(formData.get("branchId") ?? "");
   const opening = String(formData.get("opening") ?? "").trim();
   if (!branchId) return { error: "Selecciona la sede." };
+  const branch = await prisma.branch.findFirst({
+    where: { id: branchId, tenantId: auth.tenant.id },
+    select: { id: true },
+  });
+  if (!branch) return { error: "Sede no encontrada." };
   const openingCents = parseCents(opening);
   if (openingCents === null) return { error: "Importe inicial inválido (ej. 200.00)." };
 
@@ -73,6 +78,7 @@ export async function closeCashSessionAction(
   // Incluye movimientos generados por ventas en efectivo (IN sin cashSessionId)
   // y los manuales de la sede; así el cuadre coincide con lo vendido en la caja.
   const { inSum, outSum } = await classifyMovementsByBranch(
+    auth.tenant.id,
     session.branchId,
     session.openedAt,
   );
@@ -115,6 +121,12 @@ export async function registerMovementAction(
   const amount = String(formData.get("amount") ?? "").trim();
   const reason = String(formData.get("reason") ?? "").trim();
 
+  const branch = await prisma.branch.findFirst({
+    where: { id: branchId, tenantId: auth.tenant.id },
+    select: { id: true },
+  });
+  if (!branch) return { error: "Sede no encontrada." };
+
   const amountCents = parseCents(amount);
   if (!["IN", "OUT"].includes(type)) return { error: "Tipo inválido." };
   if (amountCents === null || amountCents <= 0) return { error: "Monto inválido." };
@@ -154,9 +166,9 @@ function parseCents(value: string): number | null {
   return Math.round(parseFloat(value) * 100);
 }
 
-async function classifyMovementsByBranch(branchId: string, from: Date) {
+async function classifyMovementsByBranch(tenantId: string, branchId: string, from: Date) {
   const movements = await prisma.cashMovement.findMany({
-    where: { branchId, createdAt: { gte: from } },
+    where: { tenantId, branchId, createdAt: { gte: from } },
     select: { type: true, amountCents: true },
   });
   let inSum = 0;

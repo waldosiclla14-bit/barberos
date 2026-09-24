@@ -50,10 +50,11 @@ async function topServices(tenantId: string): Promise<string> {
     .join("\n");
 }
 
-async function trends(): Promise<string> {
+async function trends(tenantId: string): Promise<string> {
   const counts = await prisma.appointmentService.groupBy({
     by: ["serviceId"],
     _count: { appointmentId: true },
+    where: { appointment: { tenantId } },
     orderBy: { _count: { appointmentId: "desc" } },
     take: 5,
   });
@@ -62,7 +63,7 @@ async function trends(): Promise<string> {
   }
   const ids = counts.map((c) => c.serviceId);
   const names = await prisma.service.findMany({
-    where: { id: { in: ids } },
+    where: { id: { in: ids }, tenantId },
     select: { id: true, name: true },
   });
   const byId = new Map(names.map((n) => [n.id, n.name]));
@@ -216,7 +217,7 @@ export async function askAssistant(tenantId: string, tenantName: string, message
     return { intent: "PRICING", text };
   }
   if (TREND_KEYWORDS.some((k) => q.includes(k))) {
-    return { intent: "TRENDS", text: await trends() };
+    return { intent: "TRENDS", text: await trends(tenantId) };
   }
   if (PROMO_KEYWORDS.some((k) => q.includes(k))) {
     return { intent: "PROMOS", text: await promos(tenantId) };

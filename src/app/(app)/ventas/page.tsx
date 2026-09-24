@@ -25,7 +25,8 @@ function fmtDateTime(d: Date): string {
 export default async function VentasPage() {
   const auth = await requirePermission("sales:view");
 
-  const [branches, services, barbers, products, customers, sales] = await Promise.all([
+  const [branches, services, barbers, products, customers, sales, tenantCfg] =
+    await Promise.all([
     prisma.branch.findMany({
       where: { tenantId: auth.tenant.id, isActive: true },
       orderBy: { name: "asc" },
@@ -69,6 +70,10 @@ export default async function VentasPage() {
         },
       },
     }),
+    prisma.tenant.findUnique({
+      where: { id: auth.tenant.id },
+      select: { pointRedeemCents: true },
+    }),
   ]);
 
   const todayTotal = sales.reduce((acc, s) => acc + s.totalCents, 0);
@@ -106,12 +111,13 @@ export default async function VentasPage() {
               </p>
             ) : (
               <PosForm
-              branches={branches}
-              services={services}
-              barbers={barbers}
-              products={products}
-              customers={customers}
-            />
+                branches={branches}
+                services={services}
+                barbers={barbers}
+                products={products}
+                customers={customers}
+                pointRedeemCents={tenantCfg?.pointRedeemCents ?? 10}
+              />
             )}
           </CardBody>
         </Card>

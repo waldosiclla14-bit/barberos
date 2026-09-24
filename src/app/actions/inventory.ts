@@ -25,7 +25,9 @@ export async function createProductAction(
 
   const name = String(formData.get("name") ?? "").trim();
   const branchId = String(formData.get("branchId") ?? "");
-  const categoryId = String(formData.get("categoryId") ?? "") || null;
+  const rawCategoryId = String(formData.get("categoryId") ?? "") || null;
+  const categoryId =
+    rawCategoryId && rawCategoryId !== "none" ? rawCategoryId : null;
   const price = money(formData.get("price"));
   const cost = money(formData.get("cost")) ?? 0;
   const stockQty = Math.max(0, Number(formData.get("stockQty")) || 0);
@@ -33,6 +35,22 @@ export async function createProductAction(
 
   if (!name || !branchId) return { error: "Nombre y sede son obligatorios." };
   if (price === null) return { error: "Precio inválido." };
+
+  const branch = await prisma.branch.findFirst({
+    where: { id: branchId, tenantId: auth.tenant.id },
+    select: { id: true },
+  });
+  if (!branch) return { error: "Sede no encontrada." };
+  const category =
+    categoryId
+      ? await prisma.productCategory.findFirst({
+          where: { id: categoryId, tenantId: auth.tenant.id },
+          select: { id: true },
+        })
+      : null;
+  if (categoryId && !category) {
+    return { error: "Categoría no encontrada." };
+  }
 
   const product = await prisma.product.create({
     data: {
@@ -114,9 +132,19 @@ export async function adjustStockAction(
 
   const product = await prisma.product.findFirst({
     where: { id: productId, tenantId: auth.tenant.id },
-    select: { id: true, stockQty: true },
+    select: { id: true, stockQty: true, branchId: true },
   });
   if (!product) return { error: "Producto no encontrado." };
+  if (product.branchId !== branchId) {
+    return { error: "El producto pertenece a otra sede." };
+  }
+  if (supplierId) {
+    const supplier = await prisma.supplier.findFirst({
+      where: { id: supplierId, tenantId: auth.tenant.id },
+      select: { id: true },
+    });
+    if (!supplier) return { error: "Proveedor no encontrado." };
+  }
 
   const delta = type === "OUT" ? -qty : qty;
   const stockAfter = product.stockQty + delta;

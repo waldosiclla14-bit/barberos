@@ -297,7 +297,7 @@ export default async function ReservarPage({
   }
 
   const chosenServices = await prisma.service.findMany({
-    where: { id: { in: serviceIds } },
+    where: { id: { in: serviceIds }, tenantId: tenant.id, isActive: true },
     select: { name: true, priceCents: true, durationMin: true },
   });
   const totalCents = chosenServices.reduce((a, s) => a + s.priceCents, 0);

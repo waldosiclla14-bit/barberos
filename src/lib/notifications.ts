@@ -2,6 +2,8 @@
 // En demo el "envío" se registra en MessageLog y en el audit log (sin llamadas reales).
 
 import { prisma } from "@/lib/prisma";
+import { addDaysToKey, limaDayRange, todayLima } from "@/lib/scheduling/time";
+import { LIMA_TZ } from "@/lib/scheduling/time";
 
 export interface SendResult {
   sent: number;
@@ -206,11 +208,13 @@ export async function sendAppointmentConfirmation(
       barber: appt.barber.displayName,
       service: appt.services[0]?.serviceName ?? "tu servicio",
       date: appt.startsAt.toLocaleDateString("es-PE", {
+        timeZone: LIMA_TZ,
         weekday: "long",
         day: "numeric",
         month: "short",
       }),
       time: appt.startsAt.toLocaleTimeString("es-PE", {
+        timeZone: LIMA_TZ,
         hour: "2-digit",
         minute: "2-digit",
       }),
@@ -222,13 +226,16 @@ export async function sendAppointmentConfirmation(
 
 /** Envía recordatorios de las citas de mañana (Lima). Devuelve conteo. */
 export async function sendReminders(tenantId: string): Promise<SendResult> {
+  const tomorrow = limaDayRange(addDaysToKey(todayLima(), 1));
+  if (!tomorrow) return { sent: 0, skipped: 0 };
+
   const [tpl, appointments, tenants] = await Promise.all([
     templateFor(tenantId, "REMINDER"),
     prisma.appointment.findMany({
       where: {
         tenantId,
         status: { in: ["PENDING", "CONFIRMED"] },
-        startsAt: { gte: tomorrowStart(), lt: tomorrowEnd() },
+        startsAt: { gte: tomorrow.start, lt: tomorrow.end },
       },
       select: {
         id: true,
@@ -244,18 +251,36 @@ export async function sendReminders(tenantId: string): Promise<SendResult> {
   const tenantName = tenants?.name ?? "la barbería";
   let sent = 0;
   let skipped = 0;
+  const todayKey = todayLima();
   for (const a of appointments) {
     const cust = a.customer;
     if (!cust) {
       skipped++;
       continue;
     }
+    // Dedupe: no reenviar un recordatorio ya enviado hoy a este cliente.
+    const todayRange = limaDayRange(todayKey);
+    const already = await prisma.messageLog.findFirst({
+      where: {
+        tenantId,
+        customerId: cust.id,
+        kind: "REMINDER",
+        createdAt: todayRange ? { gte: todayRange.start } : undefined,
+      },
+      select: { id: true },
+    });
+    if (already) {
+      skipped++;
+      continue;
+    }
     const date = a.startsAt.toLocaleDateString("es-PE", {
+      timeZone: LIMA_TZ,
       weekday: "long",
       day: "numeric",
       month: "short",
     });
     const time = a.startsAt.toLocaleTimeString("es-PE", {
+      timeZone: LIMA_TZ,
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -279,18 +304,6 @@ export async function sendReminders(tenantId: string): Promise<SendResult> {
     sent++;
   }
   return { sent, skipped };
-}
-
-function tomorrowStart(): Date {
-  const now = new Date();
-  const d = new Date(now.getTime() + 86400000);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-function tomorrowEnd(): Date {
-  const d = tomorrowStart();
-  d.setDate(d.getDate() + 1);
-  return d;
 }
 
 /**

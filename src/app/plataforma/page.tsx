@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
@@ -7,7 +8,8 @@ export const metadata: Metadata = {
 
 /** Área global del SUPER ADMIN. El panel completo llega en fase SaaS. */
 export default async function PlataformaPage() {
-  await requireUser();
+  const auth = await requireUser();
+  if (auth.user.role !== "SUPER_ADMIN") redirect("/dashboard");
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">

@@ -51,12 +51,14 @@ export function PosForm({
   barbers,
   products,
   customers,
+  pointRedeemCents,
 }: {
   branches: BranchOption[];
   services: ServiceOption[];
   barbers: BarberOption[];
   products: ProductOption[];
   customers: CustomerOption[];
+  pointRedeemCents: number;
 }) {
   const [state, formAction, isPending] = useActionState(createSaleAction, initialState);
   const [lines, setLines] = useState<Line[]>([{ key: 1, serviceId: "", qty: 1, barberId: "" }]);
@@ -82,10 +84,10 @@ export function PosForm({
   const maxRedeem = selectedCustomer
     ? Math.min(
         selectedCustomer.loyaltyPoints,
-        Math.floor((subtotal + productSubtotal - discountCents) / 10),
+        Math.floor((subtotal + productSubtotal - discountCents) / pointRedeemCents),
       )
     : 0;
-  const redeemCents = (Number(redeemPoints) || 0) * 10;
+  const redeemCents = (Number(redeemPoints) || 0) * pointRedeemCents;
   const total = Math.max(0, subtotal + productSubtotal - discountCents - redeemCents);
 
   const updateLine = (key: number, patch: Partial<Line>) =>

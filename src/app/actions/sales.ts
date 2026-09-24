@@ -122,6 +122,13 @@ export async function createSaleAction(
 
   // Cliente: id conocido, o nombre+teléfono (busca o crea)
   let customerId = d.customerId ?? undefined;
+  if (customerId) {
+    const owner = await prisma.customer.findFirst({
+      where: { id: customerId, tenantId: auth.tenant.id },
+      select: { id: true },
+    });
+    if (!owner) return { error: "Cliente no válido para esta sede." };
+  }
   if (!customerId && d.customerName && d.customerPhone) {
     const existing = await prisma.customer.findUnique({
       where: {

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireTenant } from "@/lib/auth/session";
+import { requirePermission, requireTenant } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 
 export interface CustomerFormState {
@@ -87,7 +87,7 @@ export async function updateCustomerAction(
   _prev: CustomerFormState,
   formData: FormData,
 ): Promise<CustomerFormState> {
-  const auth = await requireTenant();
+  const auth = await requirePermission("customers:manage");
 
   const id = String(formData.get("customerId") ?? "");
   if (!id) return { error: "Cliente no identificado." };
@@ -115,8 +115,8 @@ export async function updateCustomerAction(
   });
   if (dup) return { error: "Otro cliente ya usa ese teléfono." };
 
-  await prisma.customer.update({
-    where: { id },
+  const updated = await prisma.customer.updateMany({
+    where: { id, tenantId: auth.tenant.id },
     data: {
       name: d.name,
       phone: d.phone,
@@ -126,6 +126,7 @@ export async function updateCustomerAction(
       preferredBarberId: d.preferredBarberId || null,
     },
   });
+  if (updated.count === 0) return { error: "Cliente no encontrado." };
 
   await audit({
     userId: auth.user.id,
@@ -152,6 +153,13 @@ export async function addCustomerNoteAction(
   if (!customerId) return { error: "Cliente no identificado." };
   if (!body || body.length < 2) return { error: "Escribe la nota." };
   if (body.length > 500) return { error: "Máximo 500 caracteres." };
+
+  // El cliente debe pertenecer al tenant (evita notas cross-tenant).
+  const customer = await prisma.customer.findFirst({
+    where: { id: customerId, tenantId: auth.tenant.id },
+    select: { id: true },
+  });
+  if (!customer) return { error: "Cliente no encontrado." };
 
   await prisma.customerNote.create({
     data: { customerId, userId: auth.user.id, body },

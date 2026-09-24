@@ -3,7 +3,7 @@
 // transacción (secciones 15, 72, 91-Caso A).
 
 import { prisma } from "@/lib/prisma";
-import { overlaps } from "@/lib/scheduling/time";
+import { limaToUTC, overlaps, toLimaParts } from "@/lib/scheduling/time";
 import { createSale } from "@/lib/sales";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -78,6 +78,16 @@ export async function createAppointmentSafe(
     return { ok: false, error: "Selecciona al menos un servicio." };
   }
 
+  // Sede debe pertenecer al tenant y estar activa; el barbero debe ser de esa
+  // sede y ofrecer los servicios (evita citas cross-tenant / sede inactiva).
+  const branch = await prisma.branch.findFirst({
+    where: { id: input.branchId, tenantId: input.tenantId, isActive: true },
+    select: { id: true },
+  });
+  if (!branch) {
+    return { ok: false, error: "La sede no está disponible." };
+  }
+
   const services = await prisma.service.findMany({
     where: {
       tenantId: input.tenantId,
@@ -93,6 +103,7 @@ export async function createAppointmentSafe(
   const barber = await prisma.barber.findFirst({
     where: {
       tenantId: input.tenantId,
+      branchId: input.branchId,
       id: input.barberId,
       isActive: true,
       AND: input.serviceIds.map((sid) => ({
@@ -105,11 +116,26 @@ export async function createAppointmentSafe(
     return { ok: false, error: "El barbero no ofrece esos servicios." };
   }
 
+  // Si llega un customer.id, debe pertenecer al tenant (evita IDOR
+  // cross-tenant: notas/visitas/puntos a clientes de otra barbería).
+  if (input.customer.id) {
+    const owner = await prisma.customer.findFirst({
+      where: { id: input.customer.id, tenantId: input.tenantId },
+      select: { id: true },
+    });
+    if (!owner) {
+      return { ok: false, error: "Cliente no válido." };
+    }
+  }
+
   const totalDurationMin = services.reduce((a, s) => a + s.durationMin, 0);
   const totalPriceCents = services.reduce((a, s) => a + s.priceCents, 0);
   const endsAt = new Date(input.startsAt.getTime() + totalDurationMin * 60 * 1000);
   if (input.startsAt < new Date()) {
     return { ok: false, error: "No puedes reservar en el pasado." };
+  }
+  if (endsAt <= new Date()) {
+    return { ok: false, error: "La reserva ya terminó." };
   }
 
   try {
@@ -370,7 +396,14 @@ export async function rescheduleAppointment(
     await prisma.$transaction(async (tx) => {
       const appt = await tx.appointment.findFirst({
         where: { id: appointmentId, tenantId },
-        select: { id: true, status: true, endsAt: true, startsAt: true, barberId: true },
+        select: {
+          id: true,
+          status: true,
+          endsAt: true,
+          startsAt: true,
+          barberId: true,
+          branchId: true,
+        },
       });
       if (!appt) throw new Error("NOT_FOUND");
       if (!["PENDING", "CONFIRMED"].includes(appt.status)) {
@@ -391,6 +424,36 @@ export async function rescheduleAppointment(
         select: { id: true },
       });
       if (conflict) throw new Error("SLOT_TAKEN");
+
+      if (newStartsAt < new Date()) {
+        throw new Error("INVALID_TIME");
+      }
+
+      const parts = toLimaParts(newStartsAt);
+      const { weekday } = parts;
+      const [branchDay, barberDay] = await Promise.all([
+        tx.branchSchedule.findFirst({
+          where: { branchId: appt.branchId, weekday },
+          select: { isClosed: true, openMin: true, closeMin: true },
+        }),
+        tx.barberSchedule.findFirst({
+          where: { barberId: appt.barberId, weekday },
+          select: { startMin: true, endMin: true },
+        }),
+      ]);
+      if (branchDay?.isClosed || !barberDay) {
+        throw new Error("CLOSED_DAY");
+      }
+      const startMin = Math.max(branchDay?.openMin ?? 0, barberDay.startMin);
+      const endMin = Math.min(
+        branchDay?.closeMin ?? 24 * 60,
+        barberDay.endMin,
+      );
+      const dayStart = limaToUTC(parts.year, parts.month, parts.day, startMin);
+      const dayEnd = limaToUTC(parts.year, parts.month, parts.day, endMin);
+      if (newStartsAt < dayStart || newEndsAt > dayEnd) {
+        throw new Error("CLOSED_DAY");
+      }
 
       await tx.appointment.update({
         where: { id: appt.id },
@@ -413,6 +476,12 @@ export async function rescheduleAppointment(
     const message = error instanceof Error ? error.message : "";
     if (message === "SLOT_TAKEN") {
       return { ok: false, error: "Ese horario está ocupado. Elige otro." };
+    }
+    if (message === "INVALID_TIME") {
+      return { ok: false, error: "No puedes reprogramar en el pasado." };
+    }
+    if (message === "CLOSED_DAY") {
+      return { ok: false, error: "La sede no atiende en ese horario." };
     }
     if (message === "NOT_FOUND") return { ok: false, error: "Reserva no encontrada." };
     if (message === "INVALID_TRANSITION") {

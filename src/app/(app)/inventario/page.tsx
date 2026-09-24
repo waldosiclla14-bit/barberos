@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select } from "@/components/ui/input";
 import { CategoryForm, ProductForm, StockForm } from "./inventory-forms";
 
 export const metadata: Metadata = {
@@ -65,7 +66,7 @@ export default async function InventarioPage({
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Inventario</h1>
+          <h1 className="font-display text-3xl font-semibold tracking-wide text-zinc-900">Inventario</h1>
           <p className="mt-1 text-sm text-zinc-600">
             Productos por sede, stock en tiempo real y alertas de mínimo.
           </p>
@@ -95,7 +96,7 @@ export default async function InventarioPage({
           className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
             onlyLow
               ? "border-zinc-300 text-zinc-600 hover:bg-zinc-50"
-              : "border-zinc-900 bg-zinc-900 text-white"
+              : "border-(--accent) bg-(--accent) text-(--accent-ink)"
           }`}
         >
           Todos
@@ -104,7 +105,7 @@ export default async function InventarioPage({
           href="/inventario?alertas=1"
           className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
             onlyLow
-              ? "border-zinc-900 bg-zinc-900 text-white"
+              ? "border-(--accent) bg-(--accent) text-(--accent-ink)"
               : "border-zinc-300 text-zinc-600 hover:bg-zinc-50"
           }`}
         >
@@ -117,10 +118,9 @@ export default async function InventarioPage({
           Proveedores
         </a>
         <form method="get" className="ml-auto flex items-end gap-2">
-          <select
+          <Select
             name="categoria"
             defaultValue={catRaw}
-            className="rounded-lg border border-zinc-300 bg-white h-9 px-3 text-sm text-zinc-900"
           >
             <option value="">Todas las categorías</option>
             {categories.map((c) => (
@@ -128,7 +128,7 @@ export default async function InventarioPage({
                 {c.name}
               </option>
             ))}
-          </select>
+          </Select>
           <button
             type="submit"
             className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
@@ -190,7 +190,7 @@ export default async function InventarioPage({
                           </td>
                           <td className="px-5 py-3 text-right">
                             <details className="text-right">
-                              <summary className="cursor-pointer text-xs font-semibold text-zinc-600 hover:text-zinc-900">
+                              <summary className="cursor-pointer text-xs font-semibold text-zinc-600 hover:text-(--accent-text)">
                                 Stock
                               </summary>
                               <div className="mt-3 grid gap-2 rounded-lg border border-zinc-100 bg-white p-3 text-left">

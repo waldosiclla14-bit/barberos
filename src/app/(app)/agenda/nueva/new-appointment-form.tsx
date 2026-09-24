@@ -6,7 +6,7 @@ import {
   type FormState,
 } from "@/app/actions/appointments";
 import { Button } from "@/components/ui/button";
-import { Input, Label } from "@/components/ui/input";
+import { Input, Label, Select } from "@/components/ui/input";
 import { formatPEN } from "@/lib/utils";
 
 interface Option {
@@ -61,12 +61,11 @@ export function NewAppointmentForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="branchId">Sede</Label>
-          <select
+          <Select
             id="branchId"
             name="branchId"
             value={branchId}
             onChange={(e) => setBranchId(e.target.value)}
-            className="h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm"
             required
           >
             {branches.map((b) => (
@@ -74,14 +73,13 @@ export function NewAppointmentForm({
                 {b.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <Label htmlFor="barberId">Barbero</Label>
-          <select
+          <Select
             id="barberId"
             name="barberId"
-            className="h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm"
             required
           >
             <option value="">Selecciona…</option>
@@ -90,7 +88,7 @@ export function NewAppointmentForm({
                 {b.name}
               </option>
             ))}
-          </select>
+          </Select>
           {branchBarbers.length === 0 && (
             <p className="mt-1 text-xs text-zinc-500">
               Esta sede no tiene barberos activos.

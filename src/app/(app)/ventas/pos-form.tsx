@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { createSaleAction, type SaleFormState } from "@/app/actions/sales";
 import { Button } from "@/components/ui/button";
-import { Input, Label } from "@/components/ui/input";
+import { Input, Label, Select } from "@/components/ui/input";
 
 const initialState: SaleFormState = {};
 
@@ -98,30 +98,28 @@ export function PosForm({
 
       <div>
         <Label htmlFor="pos-branch">Sede</Label>
-        <select
+        <Select
           id="pos-branch"
           value={branchId}
           onChange={(e) => setBranchId(e.target.value)}
-          className="w-full rounded-lg border border-zinc-300 bg-white h-11 px-3 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
         >
           {branches.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div className="space-y-3">
         <p className="text-sm font-semibold text-zinc-900">Servicios</p>
         {lines.map((line) => (
           <div key={line.key} className="grid gap-2 rounded-lg border border-zinc-200 p-3 sm:grid-cols-[1fr_80px_1fr_auto]">
-            <select
+            <Select
               name="itemServiceId"
               value={line.serviceId}
               onChange={(e) => updateLine(line.key, { serviceId: e.target.value })}
               required
-              className="h-11 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900"
             >
               <option value="">Selecciona servicio…</option>
               {services.map((s) => (
@@ -129,7 +127,7 @@ export function PosForm({
                   {s.name} — S/ {(s.priceCents / 100).toFixed(2)}
                 </option>
               ))}
-            </select>
+            </Select>
             <Input
               type="number"
               min={1}
@@ -139,11 +137,10 @@ export function PosForm({
               onChange={(e) => updateLine(line.key, { qty: Number(e.target.value) })}
               aria-label="Cantidad"
             />
-            <select
+            <Select
               name="itemBarber"
               value={line.barberId}
               onChange={(e) => updateLine(line.key, { barberId: e.target.value })}
-              className="h-11 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900"
             >
               <option value="none">Sin barbero</option>
               {barbers.map((b) => (
@@ -151,7 +148,7 @@ export function PosForm({
                   {b.displayName}
                 </option>
               ))}
-            </select>
+            </Select>
             <button
               type="button"
               onClick={() =>
@@ -190,7 +187,7 @@ export function PosForm({
                 key={pline.key}
                 className="grid gap-2 rounded-lg border border-zinc-200 p-3 sm:grid-cols-[1fr_80px_auto]"
               >
-                <select
+                <Select
                   name="productId"
                   value={pline.productId}
                   onChange={(e) =>
@@ -200,7 +197,6 @@ export function PosForm({
                       ),
                     )
                   }
-                  className="h-11 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900"
                 >
                   <option value="">Selecciona producto…</option>
                   {products.map((x) => (
@@ -209,7 +205,7 @@ export function PosForm({
                       {x.stockQty > 0 ? `(stock ${x.stockQty})` : "(sin stock)"}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <Input
                   type="number"
                   min={1}
@@ -260,14 +256,13 @@ export function PosForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label htmlFor="pos-registered">Cliente registrado</Label>
-          <select
+          <Select
             id="pos-registered"
             value={customerId}
             onChange={(e) => {
               setCustomerId(e.target.value);
               setRedeemPoints("0");
             }}
-            className="w-full rounded-lg border border-zinc-300 bg-white h-11 px-3 text-sm text-zinc-900"
           >
             <option value="">Cliente nuevo / mostrador</option>
             {customers.map((c) => (
@@ -275,7 +270,7 @@ export function PosForm({
                 {c.name} · {c.phone} ({c.loyaltyPoints} pts)
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <Label htmlFor="pos-phone">Teléfono cliente nuevo (opcional)</Label>
@@ -290,18 +285,17 @@ export function PosForm({
         </div>
         <div>
           <Label htmlFor="pos-pay">Pago</Label>
-          <select
+          <Select
             id="pos-pay"
             name="paymentMethod"
             defaultValue="EFECTIVO"
-            className="w-full rounded-lg border border-zinc-300 bg-white h-11 px-3 text-sm text-zinc-900"
           >
             <option value="EFECTIVO">Efectivo</option>
             <option value="TARJETA">Tarjeta</option>
             <option value="YAPE">Yape</option>
             <option value="PLIN">Plin</option>
             <option value="OTRO">Otro</option>
-          </select>
+          </Select>
         </div>
         {selectedCustomer && (
           <div>

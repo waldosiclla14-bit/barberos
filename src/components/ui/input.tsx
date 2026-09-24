@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { InputHTMLAttributes, LabelHTMLAttributes, TextareaHTMLAttributes } from "react";
+import type { InputHTMLAttributes, LabelHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 
 type FieldVariant = "light" | "dark";
 
@@ -33,6 +33,19 @@ export function Textarea({
   return (
     <textarea
       className={cn(baseField, fieldByVariant[variant], "min-h-24 py-2", className)}
+      {...props}
+    />
+  );
+}
+
+export function Select({
+  className,
+  variant = "light",
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & { variant?: FieldVariant }) {
+  return (
+    <select
+      className={cn(baseField, fieldByVariant[variant], "h-11", className)}
       {...props}
     />
   );

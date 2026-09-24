@@ -9,7 +9,7 @@ import {
   type CustomerFormState,
 } from "@/app/actions/customers";
 import { Button } from "@/components/ui/button";
-import { Input, Label, Textarea } from "@/components/ui/input";
+import { Input, Label, Select, Textarea } from "@/components/ui/input";
 
 const initialState: CustomerFormState = {};
 
@@ -99,11 +99,10 @@ export function CustomerForm({
       </div>
       <div>
         <Label htmlFor={`barber-${formId ?? "new"}`}>Barbero favorito (opcional)</Label>
-        <select
+        <Select
           id={`barber-${formId ?? "new"}`}
           name="preferredBarberId"
           defaultValue={customer?.preferredBarberId ?? ""}
-          className="w-full rounded-lg border border-zinc-300 bg-white h-11 px-3 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
         >
           <option value="">Selecciona…</option>
           {barbers.map((b) => (
@@ -111,7 +110,7 @@ export function CustomerForm({
               {b.displayName}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
       <div>
         <Label htmlFor={`notes-${formId ?? "new"}`}>Notas iniciales (opcional)</Label>

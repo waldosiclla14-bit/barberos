@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { askAction, type AskState } from "@/app/actions/ia";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const SUGGESTIONS = [
   "¿Qué me recomiendas?",
@@ -25,7 +26,7 @@ export function AssistantChat() {
         aria-live="polite"
         className="min-h-[220px] rounded-lg border border-zinc-200 bg-zinc-50 p-4"
       >
-        <p className="rounded-lg bg-zinc-900 px-3 py-2 text-sm text-zinc-100">
+        <p className="rounded-lg bg-(--accent) px-3 py-2 text-sm font-medium text-(--accent-ink)">
           Hola 👋 Soy el asistente de tu barbería. Pregúntame por precios, horarios,
           promos o stock.
         </p>
@@ -46,11 +47,11 @@ export function AssistantChat() {
 
       <form action={formAction} className="space-y-3">
         <div className="flex gap-2">
-          <input
+          <Input
             name="message"
             autoComplete="off"
             placeholder="Escribe tu pregunta…"
-            className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400"
+            className="min-w-0 flex-1"
           />
           <Button type="submit" disabled={isPending}>
             {isPending ? "Pensando…" : "Preguntar"}

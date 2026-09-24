@@ -9,7 +9,7 @@ import {
   type InventoryFormState,
 } from "@/app/actions/inventory";
 import { Button } from "@/components/ui/button";
-import { Input, Label } from "@/components/ui/input";
+import { Input, Label, Select } from "@/components/ui/input";
 
 const initialState: InventoryFormState = {};
 
@@ -62,33 +62,24 @@ export function ProductForm({
         </div>
         <div>
           <Label htmlFor="inv-branch">Sede</Label>
-          <select
-            id="inv-branch"
-            name="branchId"
-            className="w-full rounded-lg border border-zinc-300 bg-white h-11 px-3 text-sm text-zinc-900"
-            required
-          >
+          <Select id="inv-branch" name="branchId" required>
             {branches.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <Label htmlFor="inv-cat">Categoría</Label>
-          <select
-            id="inv-cat"
-            name="categoryId"
-            className="w-full rounded-lg border border-zinc-300 bg-white h-11 px-3 text-sm text-zinc-900"
-          >
+          <Select id="inv-cat" name="categoryId">
             <option value="">Sin categoría</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
       {state.error && (
@@ -149,10 +140,9 @@ export function StockForm({
       <input type="hidden" name="type" value={mode} />
       <div>
         <Label htmlFor={`st-${productId}-sede`}>Sede</Label>
-        <select
+        <Select
           id={`st-${productId}-sede`}
           name="branchId"
-          className="w-full rounded-lg border border-zinc-300 bg-white h-11 px-3 text-sm text-zinc-900"
           required
         >
           {branches.map((b) => (
@@ -160,7 +150,7 @@ export function StockForm({
               {b.name}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
       <div>
         <Label htmlFor={`st-${productId}-qty`}>Cantidad</Label>
@@ -184,10 +174,9 @@ export function StockForm({
       {mode === "IN" && suppliers.length > 0 && (
         <div>
           <Label htmlFor={`st-${productId}-sup`}>Proveedor</Label>
-          <select
+          <Select
             id={`st-${productId}-sup`}
             name="supplierId"
-            className="w-full rounded-lg border border-zinc-300 bg-white h-11 px-3 text-sm text-zinc-900"
           >
             <option value="">—</option>
             {suppliers.map((s) => (
@@ -195,7 +184,7 @@ export function StockForm({
                 {s.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       )}
       {state.error && (

@@ -8,7 +8,7 @@ import {
   type FormState,
 } from "@/app/actions/barbers";
 import { Button } from "@/components/ui/button";
-import { Input, Label } from "@/components/ui/input";
+import { Input, Label, Select } from "@/components/ui/input";
 
 const initialState: FormState = {};
 
@@ -32,18 +32,17 @@ export function CreateBarberForm({
       </div>
       <div>
         <Label htmlFor="branchId">Sede</Label>
-        <select
+        <Select
           id="branchId"
           name="branchId"
           required
-          className="h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm"
         >
           {branches.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
       <div>
         <Label htmlFor="specialties">Especialidades (opcional)</Label>

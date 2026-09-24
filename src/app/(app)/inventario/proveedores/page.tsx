@@ -20,7 +20,7 @@ export default async function ProveedoresPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+        <h1 className="font-display text-3xl font-semibold tracking-wide text-zinc-900">
           Proveedores
         </h1>
         <p className="mt-1 text-sm text-zinc-600">

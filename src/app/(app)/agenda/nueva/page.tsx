@@ -68,10 +68,10 @@ export default async function NuevaReservaPage({
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+        <h1 className="font-display text-3xl font-semibold tracking-wide text-zinc-900">
           Nueva reserva
         </h1>
-        <Link href="/agenda" className="text-sm font-medium text-zinc-500 hover:text-zinc-900">
+        <Link href="/agenda" className="text-sm font-medium text-zinc-500 hover:text-(--accent-text)">
           ← Volver
         </Link>
       </header>

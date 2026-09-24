@@ -4,6 +4,8 @@ import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { commissionsForRange } from "@/lib/sales";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input, Label } from "@/components/ui/input";
 
 export const metadata: Metadata = {
   title: "Comisiones",
@@ -47,7 +49,7 @@ export default async function ComisionesPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+        <h1 className="font-display text-3xl font-semibold tracking-wide text-zinc-900">
           Comisiones
         </h1>
         <p className="mt-1 text-sm text-zinc-600">
@@ -57,35 +59,16 @@ export default async function ComisionesPage({
 
       <form method="get" className="flex flex-wrap items-end gap-3">
         <div>
-          <label htmlFor="desde" className="mb-1 block text-sm font-medium text-zinc-700">
-            Desde
-          </label>
-          <input
-            type="date"
-            id="desde"
-            name="desde"
-            defaultValue={from.toISOString().slice(0, 10)}
-            className="h-11 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900"
-          />
+          <Label htmlFor="desde">Desde</Label>
+          <Input type="date" id="desde" name="desde" defaultValue={from.toISOString().slice(0, 10)} />
         </div>
         <div>
-          <label htmlFor="hasta" className="mb-1 block text-sm font-medium text-zinc-700">
-            Hasta
-          </label>
-          <input
-            type="date"
-            id="hasta"
-            name="hasta"
-            defaultValue={to.toISOString().slice(0, 10)}
-            className="h-11 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900"
-          />
+          <Label htmlFor="hasta">Hasta</Label>
+          <Input type="date" id="hasta" name="hasta" defaultValue={to.toISOString().slice(0, 10)} />
         </div>
-        <button
-          type="submit"
-          className="inline-flex h-11 items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-        >
+        <Button type="submit" variant="secondary">
           Filtrar
-        </button>
+        </Button>
       </form>
 
       <section aria-label="Totales" className="grid gap-4 sm:grid-cols-2">
@@ -133,7 +116,7 @@ export default async function ComisionesPage({
                     {c.barberId ? (
                       <Link
                         href={`/barberos/${c.barberId}`}
-                        className="font-medium text-zinc-900 hover:underline"
+                        className="font-medium text-(--accent-text) hover:underline"
                       >
                         {c.barberName}
                       </Link>

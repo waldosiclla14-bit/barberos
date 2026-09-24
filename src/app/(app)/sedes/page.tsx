@@ -26,7 +26,7 @@ export default async function SedesPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Sedes</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-wide text-zinc-900">Sedes</h1>
         <p className="mt-1 text-sm text-zinc-600">
           Locales donde tu barbería atiende.
         </p>
@@ -62,7 +62,7 @@ export default async function SedesPage() {
               {canManage && (
                 <Link
                   href={`/sedes/${branch.id}`}
-                  className="mt-3 inline-block text-sm font-semibold text-zinc-900 hover:underline"
+                  className="mt-3 inline-block text-sm font-semibold text-(--accent-text) hover:underline"
                 >
                   Editar sede y horarios →
                 </Link>

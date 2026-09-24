@@ -27,7 +27,7 @@ export default async function BarberosPage() {
     });
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Equipo</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-wide text-zinc-900">Equipo</h1>
         <Card>
           <CardBody className="px-0 py-0">
             <ul className="divide-y divide-zinc-100">
@@ -66,7 +66,7 @@ export default async function BarberosPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+        <h1 className="font-display text-3xl font-semibold tracking-wide text-zinc-900">
           Barberos
         </h1>
         <p className="mt-1 text-sm text-zinc-600">
@@ -88,7 +88,7 @@ export default async function BarberosPage() {
                     <div className="min-w-0">
                       <Link
                         href={`/barberos/${b.id}`}
-                        className="truncate font-semibold text-zinc-900 hover:underline"
+                        className="truncate font-semibold text-(--accent-text) hover:underline"
                       >
                         {b.displayName}
                       </Link>

@@ -129,7 +129,7 @@ export default async function AgendaPage({
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+          <h1 className="font-display text-3xl font-semibold tracking-wide text-zinc-900">
             Agenda
           </h1>
           <p className="mt-0.5 text-sm capitalize text-zinc-600">{dayLabel}</p>
@@ -163,7 +163,7 @@ export default async function AgendaPage({
                 href={linkWith({ sede: b.id })}
                 className={`rounded-lg px-3 py-1.5 font-medium ${
                   b.id === sedeId
-                    ? "bg-zinc-900 text-white"
+                    ? "bg-(--accent) text-(--accent-ink)"
                     : "border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50"
                 }`}
               >
@@ -179,7 +179,7 @@ export default async function AgendaPage({
           <Link
             href={linkWith({ barbero: "" })}
             className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              !barberoId ? "bg-zinc-900 text-white" : "border border-zinc-300 bg-white text-zinc-600"
+              !barberoId ? "bg-(--accent) text-(--accent-ink)" : "border border-zinc-300 bg-white text-zinc-600"
             }`}
           >
             Todos los barberos
@@ -190,7 +190,7 @@ export default async function AgendaPage({
               href={linkWith({ barbero: b.id })}
               className={`rounded-full px-3 py-1 text-xs font-semibold ${
                 b.id === barberoId
-                  ? "bg-zinc-900 text-white"
+                  ? "bg-(--accent) text-(--accent-ink)"
                   : "border border-zinc-300 bg-white text-zinc-600"
               }`}
             >

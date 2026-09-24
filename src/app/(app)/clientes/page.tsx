@@ -3,6 +3,8 @@ import Link from "next/link";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { CustomerForm } from "./customer-forms";
 
 export const metadata: Metadata = {
@@ -67,7 +69,7 @@ export default async function ClientesPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Clientes</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-wide text-zinc-900">Clientes</h1>
         <p className="mt-1 text-sm text-zinc-600">
           CRM · {total} activos. Historial, notas y preferencias.
         </p>
@@ -75,12 +77,9 @@ export default async function ClientesPage({ searchParams }: PageProps) {
 
       <form method="get" className="flex flex-wrap items-center gap-2">
         <InputSearch defaultValue={q} />
-        <button
-          type="submit"
-          className="inline-flex h-11 items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-        >
+        <Button type="submit" variant="secondary">
           Buscar
-        </button>
+        </Button>
         <label className="flex items-center gap-2 text-sm text-zinc-600">
           <input type="checkbox" name="inactivos" value="1" defaultChecked={showInactive} />
           Mostrar inactivos
@@ -103,7 +102,7 @@ export default async function ClientesPage({ searchParams }: PageProps) {
                     <div className="min-w-0">
                       <Link
                         href={`/clientes/${c.id}`}
-                        className="truncate font-semibold text-zinc-900 hover:underline"
+                        className="truncate font-semibold text-(--accent-text) hover:underline"
                       >
                         {c.name}
                       </Link>
@@ -150,12 +149,5 @@ export default async function ClientesPage({ searchParams }: PageProps) {
 }
 
 function InputSearch({ defaultValue }: { defaultValue: string }) {
-  return (
-    <input
-      name="q"
-      defaultValue={defaultValue}
-      placeholder="Buscar por nombre, teléfono o email"
-      className="h-11 flex-1 min-w-52 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
-    />
-  );
+  return <Input name="q" defaultValue={defaultValue} placeholder="Buscar por nombre, teléfono o email" className="h-11 flex-1 min-w-52" />;
 }

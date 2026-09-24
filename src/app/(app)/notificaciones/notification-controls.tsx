@@ -8,6 +8,7 @@ import {
   type NotificationFormState,
 } from "@/app/actions/notifications";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/input";
 
 const initialState: NotificationFormState = {};
 
@@ -70,14 +71,14 @@ export function ChannelSwitch({
   return (
     <form action={formAction} className="flex items-center gap-2">
       <input type="hidden" name="kind" value={kind} />
-      <select
+      <Select
         name="channel"
         defaultValue={current}
-        className="rounded-lg border border-zinc-300 bg-white h-9 px-2 text-sm text-zinc-900"
+        className="min-w-40"
       >
         <option value="WHATSAPP">WhatsApp</option>
         <option value="EMAIL">Email</option>
-      </select>
+      </Select>
       <button
         type="submit"
         disabled={isPending}

@@ -1,0 +1,261 @@
+// FASE 7: Motor de notificaciones WhatsApp/Email.
+// En demo el "envío" se registra en MessageLog y en el audit log (sin llamadas reales).
+
+import { prisma } from "@/lib/prisma";
+
+export interface SendResult {
+  sent: number;
+  skipped: number;
+}
+
+function fmtPhone(phone: string): string {
+  return phone.startsWith("+") ? phone : `+51${phone}`;
+}
+
+function render(tpl: string, vars: Record<string, string>): string {
+  return tpl.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? "");
+}
+
+export async function upsertTemplateDefaults(tenantId: string) {
+  const defaults: Array<{
+    kind: string;
+    name: string;
+    channel: string;
+    body: string;
+  }> = [
+    {
+      kind: "WELCOME",
+      name: "Bienvenida",
+      channel: "WHATSAPP",
+      body:
+        "¡Hola {{customerName}}! Gracias por registrarte en {{tenantName}}. Estamos para darte el mejor corte. 💈",
+    },
+    {
+      kind: "CONFIRMATION",
+      name: "Confirmación de reserva",
+      channel: "WHATSAPP",
+      body:
+        "{{customerName}}, tu cita en {{tenantName}} quedó confirmada: {{service}} el {{date}} a las {{time}} con {{barber}}. ¡Te esperamos!",
+    },
+    {
+      kind: "REMINDER",
+      name: "Recordatorio de cita",
+      channel: "WHATSAPP",
+      body:
+        "Oye {{customerName}} 👋, te recordamos tu cita mañana {{date}} a las {{time}} en {{tenantName}} con {{barber}}. Confirma o reagenda por WhatsApp.",
+    },
+    {
+      kind: "NO_SHOW",
+      name: "No asistió",
+      channel: "WHATSAPP",
+      body:
+        "Hola {{customerName}}, vimos que no pudiste venir a tu cita. ¿Quieres reagendar? Escríbenos y te encontramos un hueco. 💈",
+    },
+    {
+      kind: "REBOOK",
+      name: "Reagendar",
+      channel: "WHATSAPP",
+      body:
+        "{{customerName}}, tu cita en {{tenantName}} fue reagendada para {{date}} a las {{time}} con {{barber}}. ¡Gracias!",
+    },
+  ];
+
+  for (const d of defaults) {
+    const found = await prisma.notificationTemplate.findFirst({
+      where: { tenantId, kind: d.kind },
+      select: { id: true },
+    });
+    if (!found) {
+      await prisma.notificationTemplate.create({
+        data: { tenantId, kind: d.kind, name: d.name, channel: d.channel, body: d.body },
+      });
+    }
+  }
+}
+
+async function templateFor(
+  tenantId: string,
+  kind: string,
+): Promise<{ body: string; channel: string } | null> {
+  const tpl = await prisma.notificationTemplate.findFirst({
+    where: { tenantId, kind, isActive: true },
+    orderBy: { createdAt: "desc" },
+    select: { body: true, channel: true },
+  });
+  return tpl;
+}
+
+function customerWhatsapp(customer: { phone: string }): string {
+  return `https://wa.me/${fmtPhone(customer.phone).replace(/\D/g, "")}`;
+}
+
+export async function logMessage(input: {
+  tenantId: string;
+  customerId?: string | null;
+  channel: string;
+  kind: string;
+  to: string;
+  body: string;
+}) {
+  return prisma.messageLog.create({
+    data: {
+      tenantId: input.tenantId,
+      customerId: input.customerId ?? null,
+      channel: input.channel,
+      kind: input.kind,
+      to: input.to,
+      body: input.body.slice(0, 1000),
+    },
+  });
+}
+
+/** Confirma por WhatsApp cuando se crea una cita (usada en reserva pública/servidor). */
+export async function sendConfirmation(input: {
+  tenantId: string;
+  tenantName: string;
+  customerId: string | null;
+  customerName: string;
+  customerPhone: string;
+  barber: string;
+  service: string;
+  date: string;
+  time: string;
+  extra?: { pinpoint: string };
+}) {
+  const tpl = await templateFor(input.tenantId, "CONFIRMATION");
+  const body = render(tpl?.body ?? "{{customerName}}, tu cita fue confirmada.",
+    {
+      customerName: input.customerName,
+      tenantName: input.tenantName,
+      barber: input.barber,
+      service: input.service,
+      date: input.date,
+      time: input.time,
+    });
+  await logMessage({
+    tenantId: input.tenantId,
+    customerId: input.customerId,
+    channel: tpl?.channel ?? "WHATSAPP",
+    kind: "CONFIRMATION",
+    to: input.customerPhone,
+    body,
+  });
+  return input.extra?.pinpoint ?? "ok";
+}
+
+/** Carga una cita recién creada y emite su confirmación (caso público + agenda). */
+export async function sendAppointmentConfirmation(
+  tenantId: string,
+  appointmentId: string,
+): Promise<void> {
+  try {
+    const { prisma: db } = await import("@/lib/prisma");
+    const appt = await db.appointment.findUnique({
+      where: { id: appointmentId },
+      select: {
+        tenantId: true,
+        startsAt: true,
+        customer: { select: { id: true, name: true, phone: true } },
+        barber: { select: { displayName: true } },
+        services: { select: { serviceName: true } },
+        tenant: { select: { name: true } },
+      },
+    });
+    if (!appt || !appt.customer) return;
+    await sendConfirmation({
+      tenantId,
+      tenantName: appt.tenant.name,
+      customerId: appt.customer.id,
+      customerName: appt.customer.name,
+      customerPhone: appt.customer.phone,
+      barber: appt.barber.displayName,
+      service: appt.services[0]?.serviceName ?? "tu servicio",
+      date: appt.startsAt.toLocaleDateString("es-PE", {
+        weekday: "long",
+        day: "numeric",
+        month: "short",
+      }),
+      time: appt.startsAt.toLocaleTimeString("es-PE", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    });
+  } catch (error) {
+    console.error("[sendAppointmentConfirmation]", error);
+  }
+}
+
+/** Envía recordatorios de las citas de mañana (Lima). Devuelve conteo. */
+export async function sendReminders(tenantId: string): Promise<SendResult> {
+  const [tpl, appointments, tenants] = await Promise.all([
+    templateFor(tenantId, "REMINDER"),
+    prisma.appointment.findMany({
+      where: {
+        tenantId,
+        status: { in: ["PENDING", "CONFIRMED"] },
+        startsAt: { gte: tomorrowStart(), lt: tomorrowEnd() },
+      },
+      select: {
+        id: true,
+        startsAt: true,
+        customer: { select: { id: true, name: true, phone: true } },
+        barber: { select: { displayName: true } },
+        services: { select: { serviceName: true } },
+      },
+    }),
+    prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true } }),
+  ]);
+
+  const tenantName = tenants?.name ?? "la barbería";
+  let sent = 0;
+  let skipped = 0;
+  for (const a of appointments) {
+    const cust = a.customer;
+    if (!cust) {
+      skipped++;
+      continue;
+    }
+    const date = a.startsAt.toLocaleDateString("es-PE", {
+      weekday: "long",
+      day: "numeric",
+      month: "short",
+    });
+    const time = a.startsAt.toLocaleTimeString("es-PE", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const body = render(tpl?.body ?? "Recordatorio de tu cita {{date}} a las {{time}}.",
+      {
+        customerName: cust.name,
+        tenantName,
+        barber: a.barber.displayName,
+        service: a.services[0]?.serviceName ?? "tu servicio",
+        date,
+        time,
+      });
+    await logMessage({
+      tenantId,
+      customerId: cust.id,
+      channel: tpl?.channel ?? "WHATSAPP",
+      kind: "REMINDER",
+      to: cust.phone,
+      body,
+    });
+    sent++;
+  }
+  return { sent, skipped };
+}
+
+function tomorrowStart(): Date {
+  const now = new Date();
+  const d = new Date(now.getTime() + 86400000);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+function tomorrowEnd(): Date {
+  const d = tomorrowStart();
+  d.setDate(d.getDate() + 1);
+  return d;
+}
+
+export { customerWhatsapp };

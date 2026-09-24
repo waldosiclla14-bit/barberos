@@ -1,0 +1,619 @@
+// BARBEROS — Schema FASE 1: Foundation
+// Multi-tenant SaaS para barberías.
+// Nota: SQLite en desarrollo no soporta enums ni Json de Prisma;
+// se usan String + validación Zod/TS (portable a PostgreSQL sin cambios de modelo).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  // Plan: FREE | STARTER | PRO | BUSINESS | ENTERPRISE (configurable, ver seccion 64)
+  plan      String   @default("FREE")
+  // Estado suscripcion: TRIAL | ACTIVE | PAST_DUE | CANCELLED | EXPIRED
+  status    String   @default("TRIAL")
+  trialEndsAt DateTime?
+  currency  String   @default("PEN")
+  timezone  String   @default("America/Lima")
+// Reserva como invitado sin cuenta (seccion 73)
+  allowGuestBooking Boolean @default(true)
+  // Fidelización (FASE 6): puntos otorgados por céntimo gastado y valor de canje
+  pointsPerSol Int @default(10) // 10 céntimos x punto
+  pointRedeemCents Int @default(10) // 1 punto = S/ 0.10
+  // Marketplace/temas (FASE 9)
+  theme String @default("classic") // classic | gold | emerald | ocean | ruby
+  integrations String @default("[]") // JSON array de códigos instalados
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  auditLogs AuditLog[]
+  branches  Branch[]
+  services  Service[]
+  barbers   Barber[]
+  customers Customer[]
+  appointments Appointment[]
+  serviceCategories ServiceCategory[]
+  timeOffs TimeOff[]
+  sales Sale[]
+  cashSessions CashSession[]
+  cashMovements CashMovement[]
+  productCategories ProductCategory[]
+  products Product[]
+  stockMovements StockMovement[]
+  suppliers Supplier[]
+  promotions Promotion[]
+  notificationTemplates NotificationTemplate[]
+  messageLogs MessageLog[]
+
+  @@index([slug])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  // null = SUPER_ADMIN global de la plataforma
+  tenantId     String?
+  email        String
+  passwordHash String
+  name         String
+  phone        String?
+  // Roles: SUPER_ADMIN | OWNER | MANAGER | BARBER | RECEPTIONIST | CUSTOMER
+  role         String   @default("OWNER")
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant   Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessions Session[]
+  auditLogs AuditLog[]
+  barber   Barber?
+  customerNotes CustomerNote[]
+  sales    Sale[]
+  cashMovements CashMovement[]
+  cashSessionsOpened CashSession[]
+  stockMovements StockMovement[]
+
+  // Email globalmente unico: evita ambiguedad en login multi-tenant
+  @@unique([email])
+  @@index([tenantId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id       String   @id @default(cuid())
+  userId   String?
+  tenantId String?
+  action   String
+  entity   String
+  entityId String?
+  // JSON serializado (SQLite no soporta Json nativo)
+  metadata String?
+  ip       String?
+  createdAt DateTime @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([userId, createdAt])
+}
+
+// ============ FASE 2: CORE (sedes, servicios, barberos, reservas) ============
+
+model Branch {
+  id       String  @id @default(cuid())
+  tenantId String
+  name     String
+  address  String?
+  phone    String?
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+branchSchedules BranchSchedule[]
+  barbers         Barber[]
+  serviceBranches ServiceBranch[]
+  appointments    Appointment[]
+  timeOffs        TimeOff[]
+  sales           Sale[]
+  cashSessions    CashSession[]
+  cashMovements   CashMovement[]
+  products        Product[]
+  stockMovements  StockMovement[]
+
+  @@index([tenantId])
+}
+
+// Horario semanal de sede. weekday: 0=domingo .. 6=sabado. Minutos desde medianoche (hora Lima).
+model BranchSchedule {
+  id       String @id @default(cuid())
+  branchId String
+  weekday  Int
+  isClosed Boolean @default(false)
+  openMin  Int @default(540)
+  closeMin Int @default(1140)
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, weekday])
+}
+
+model ServiceCategory {
+  id        String @id @default(cuid())
+  tenantId  String
+  name      String
+  sortOrder Int    @default(0)
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  services Service[]
+
+  @@index([tenantId])
+}
+
+// Precio en centimos (entero) para evitar errores de coma flotante.
+model Service {
+  id           String  @id @default(cuid())
+  tenantId     String
+  categoryId   String?
+  name         String
+  description  String?
+  priceCents   Int
+  durationMin  Int
+  imageUrl     String?
+  // Comision porcentual por defecto que recibe el barbero (seccion 50)
+  commissionPctDefault Int @default(40)
+  isActive     Boolean @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  branches ServiceBranch[]
+  barbers  BarberService[]
+  appointmentServices AppointmentService[]
+  saleItems SaleItem[]
+
+  @@index([tenantId, isActive])
+}
+
+// Disponibilidad del servicio por sede (seccion 16)
+model ServiceBranch {
+  serviceId String
+  branchId  String
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, branchId])
+  @@index([branchId])
+}
+
+model Barber {
+  id          String  @id @default(cuid())
+  tenantId    String
+  branchId    String
+  userId      String? @unique
+  displayName String
+  bio         String?
+  specialties String?
+  photoUrl    String?
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+services    BarberService[]
+  schedules   BarberSchedule[]
+  timeOffs    TimeOff[]
+  appointments Appointment[]
+  preferredBy Customer[]
+  saleItems   SaleItem[]
+
+  @@index([tenantId, isActive])
+}
+
+// Que servicios ofrece cada barbero + comision opcional propia (secciones 37-38)
+model BarberService {
+  barberId          String
+  serviceId         String
+  commissionPctOverride Float?
+
+  barber  Barber  @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([barberId, serviceId])
+  @@index([serviceId])
+}
+
+// Jornada laboral del barbero por dia. Ventanas en minutos (hora Lima).
+model BarberSchedule {
+  id        String @id @default(cuid())
+  barberId  String
+  weekday   Int
+  startMin  Int
+  endMin    Int
+
+  barber Barber @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([barberId, weekday])
+}
+
+// Vacaciones / bloqueos. barberId null = bloquea toda la sede (seccion 15).
+model TimeOff {
+  id        String   @id @default(cuid())
+  tenantId  String
+  branchId  String?
+  barberId  String?
+  startsAt  DateTime
+  endsAt    DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  barber Barber? @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, startsAt, endsAt])
+  @@index([barberId, startsAt, endsAt])
+}
+
+// ============ FASE 4: VENTAS / CAJA / COMISIONES ============
+
+// Venta generada en POS o al completar una cita (secciones 44-48).
+// Metodos de pago: EFECTIVO | TARJETA | YAPE | PLIN | OTRO
+model Sale {
+  id            String   @id @default(cuid())
+  tenantId      String
+  branchId      String
+  customerId    String?
+  appointmentId String?  @unique
+  status        String   @default("PAID") // PAID | REFUNDED | VOID
+  subtotalCents Int
+  discountCents Int      @default(0)
+  totalCents    Int
+  paymentMethod String   @default("EFECTIVO")
+  soldByUserId  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  customer    Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  soldBy      User?    @relation(fields: [soldByUserId], references: [id], onDelete: SetNull)
+  items       SaleItem[]
+  cashMovements CashMovement[]
+
+  @@index([tenantId, createdAt])
+  @@index([branchId, createdAt])
+  @@index([customerId])
+}
+
+// Linea de venta. kind: SERVICE | PRODUCT. Guarda snapshot de precio,
+// comision asignada al barbero (caso G/H secciones 50-52) y barberId.
+model SaleItem {
+  id             String   @id @default(cuid())
+  saleId         String
+  kind           String   @default("SERVICE") // SERVICE | PRODUCT
+  serviceId      String?
+  productId      String?
+  name           String
+  qty            Int      @default(1)
+  unitPriceCents Int
+  barberId       String?
+  commissionPct  Int      @default(0)
+  commissionCents Int     @default(0)
+
+  sale      Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  service   Service?  @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  product   Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  barber    Barber?   @relation(fields: [barberId], references: [id], onDelete: SetNull)
+
+  @@index([saleId])
+  @@index([barberId])
+}
+
+// Sesion de caja: apertura y cierre (secciones 54-58)
+model CashSession {
+  id            String    @id @default(cuid())
+  tenantId      String
+  branchId      String
+  openedById    String
+  openingCents  Int
+  openedAt      DateTime  @default(now())
+  closedAt      DateTime?
+  expectedCents Int
+  closingCents  Int?
+  differenceCents Int?
+  status        String    @default("OPEN") // OPEN | CLOSED
+  note          String?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  openedBy User @relation(fields: [openedById], references: [id], onDelete: Restrict)
+  movements CashMovement[]
+
+  @@index([tenantId, openedAt])
+  @@index([branchId, status])
+}
+
+// Movimiento de caja. type: IN (venta/ingreso) | OUT (retiro/gasto/egreso)
+model CashMovement {
+  id            String     @id @default(cuid())
+  tenantId      String
+  branchId      String
+  cashSessionId String?
+  saleId        String?
+  type          String     // IN | OUT | TRANSFER
+  amountCents   Int
+  reason        String?
+  userId        String?
+  createdAt     DateTime   @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  sale   Sale?  @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  session CashSession? @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([cashSessionId])
+}
+
+// ============ FASE 5: INVENTARIO ============
+
+model ProductCategory {
+  id        String @id @default(cuid())
+  tenantId  String
+  name      String
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@index([tenantId])
+}
+
+// Para consumo por barbershop: stock por sede, costo y alerta de minimo.
+model Product {
+  id            String  @id @default(cuid())
+  tenantId      String
+  branchId      String
+  categoryId    String?
+  name          String
+  costCents     Int     @default(0)
+  priceCents    Int
+  stockQty      Int     @default(0)
+  minStockQty   Int     @default(0)
+  isActive      Boolean @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  category ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  movements StockMovement[]
+  saleItems SaleItem[]
+
+  @@index([tenantId, branchId])
+}
+
+// Movimiento de stock. type: IN | OUT | ADJUST | SALE | PURCHASE
+model StockMovement {
+  id         String   @id @default(cuid())
+  tenantId   String
+  branchId   String
+  productId  String
+  type       String
+  qty        Int
+  stockAfter Int
+  reason     String?
+  userId     String?
+  createdAt  DateTime @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([productId])
+}
+
+// Proveedor para registros de compra (seccion 60)
+model Supplier {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  phone     String?
+  email     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model Customer {
+  id         String   @id @default(cuid())
+  tenantId   String
+  name       String
+  phone      String
+  email      String?
+  birthDate  DateTime?
+  notes      String?
+  // Origen: MANUAL | ONLINE | WALK_IN | IMPORT | REFERRAL
+  source     String   @default("MANUAL")
+  // Barbero favorito (seccion 32)
+  preferredBarberId String?
+  // Fidelización (FASE 6): puntos acumulados
+  loyaltyPoints Int @default(0)
+  visitCount Int      @default(0)
+  lastVisitAt DateTime?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  preferredBarber Barber?    @relation(fields: [preferredBarberId], references: [id], onDelete: SetNull)
+  appointments Appointment[]
+  customerNotes CustomerNote[]
+  sales        Sale[]
+  messageLogs  MessageLog[]
+
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+}
+
+// Notas / seguimiento CRM en linea de tiempo (seccion 33)
+model CustomerNote {
+  id         String   @id @default(cuid())
+  customerId String
+  userId     String?
+  body       String
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, createdAt])
+}
+
+// ============ FASE 6: FIDELIZACIÓN Y PROMOCIONES ============
+
+// Promoción activa sobre el catálogo (descuento porcentual)
+model Promotion {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  discountPct Int      // 0-100
+  startsAt    DateTime?
+  endsAt      DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, isActive])
+}
+
+// ============ FASE 7: NOTIFICACIONES (WhatsApp / Email) ============
+
+// Plantilla de mensaje configurable por tipo
+model NotificationTemplate {
+  id        String   @id @default(cuid())
+  tenantId  String
+  // REMINDER | CONFIRMATION | WELCOME | NO_SHOW | REBOOK
+  kind      String
+  name      String
+  channel   String   @default("WHATSAPP") // WHATSAPP | EMAIL
+  subject   String?
+  body      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, kind])
+}
+
+// Registro de envío (demo: se simula y se audita)
+model MessageLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  customerId String?
+  channel    String
+  kind       String
+  to         String
+  body       String
+  status     String   @default("SENT") // SENT | FAILED
+  createdAt  DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([customerId, createdAt])
+}
+
+// Estados: PENDING | CONFIRMED | CHECKED_IN | IN_SERVICE | COMPLETED | CANCELLED | NO_SHOW
+// Origen: ONLINE | WALK_IN | INTERNAL
+model Appointment {
+  id            String   @id @default(cuid())
+  tenantId      String
+  branchId      String
+  barberId      String
+  customerId    String
+  status        String   @default("CONFIRMED")
+  source        String   @default("ONLINE")
+  startsAt      DateTime
+  endsAt        DateTime
+  priceCents    Int
+  notes         String?
+  cancelReason  String?
+  checkedInAt   DateTime?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  cancelledAt   DateTime?
+  noShowAt      DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  barber   Barber   @relation(fields: [barberId], references: [id], onDelete: Restrict)
+customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  services AppointmentService[]
+  sale     Sale?
+
+  @@index([tenantId, startsAt])
+  @@index([barberId, startsAt, status])
+  @@index([branchId, startsAt])
+  @@index([customerId, startsAt])
+}
+
+// Snapshot de servicios de la cita (precio/duracion al momento de reservar)
+model AppointmentService {
+  id            String @id @default(cuid())
+  appointmentId String
+  serviceId     String
+  serviceName   String
+  durationMin   Int
+  priceCents    Int
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  service     Service     @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@index([appointmentId])
+}
+

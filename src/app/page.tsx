@@ -42,7 +42,7 @@ const goldStyle = {
 export default function LandingPage() {
   return (
     <main
-      className="flex flex-1 flex-col bg-[--dark-bg] text-zinc-100"
+      className="flex flex-1 flex-col bg-(--dark-bg) text-zinc-100"
       style={goldStyle}
     >
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6 animate-fade-in">

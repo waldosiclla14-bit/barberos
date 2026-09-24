@@ -7,6 +7,7 @@ export interface ThemeEntry {
   accent: string; // hex del color de marca (fondo de CTAs/estados activos)
   accentInk: string; // tinta legible sobre accent
   accentBright: string; // variante clara de marca para superficies oscuras
+  accentText: string; // variante legible sobre superficies claras
   price: string;
 }
 
@@ -18,6 +19,7 @@ export const THEMES: ThemeEntry[] = [
     accent: "#18181b",
     accentInk: "#ffffff",
     accentBright: "#a1a1aa",
+    accentText: "#18181b",
     price: "Gratis",
   },
   {
@@ -27,6 +29,7 @@ export const THEMES: ThemeEntry[] = [
     accent: "#c9a227",
     accentInk: "#1c1917",
     accentBright: "#e8c872",
+    accentText: "#8a6c00",
     price: "S/ 9.90",
   },
   {
@@ -36,6 +39,7 @@ export const THEMES: ThemeEntry[] = [
     accent: "#047857",
     accentInk: "#ffffff",
     accentBright: "#34d399",
+    accentText: "#046a4b",
     price: "S/ 9.90",
   },
   {
@@ -45,6 +49,7 @@ export const THEMES: ThemeEntry[] = [
     accent: "#1d4ed8",
     accentInk: "#ffffff",
     accentBright: "#60a5fa",
+    accentText: "#1e40af",
     price: "S/ 9.90",
   },
   {
@@ -54,6 +59,7 @@ export const THEMES: ThemeEntry[] = [
     accent: "#be123c",
     accentInk: "#ffffff",
     accentBright: "#fb7185",
+    accentText: "#a11234",
     price: "S/ 9.90",
   },
 ];

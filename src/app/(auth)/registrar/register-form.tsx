@@ -89,7 +89,7 @@ export function RegisterForm() {
           placeholder="Mínimo 8 caracteres"
         />
       </div>
-      <FieldError>{state.error}</FieldError>
+      <FieldError className="text-red-400">{state.error}</FieldError>
       <Button type="submit" className="w-full" disabled={isPending}>
         {isPending ? "Creando barbería…" : "Crear mi barbería"}
       </Button>

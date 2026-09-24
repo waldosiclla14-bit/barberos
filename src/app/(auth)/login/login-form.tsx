@@ -44,7 +44,7 @@ export function LoginForm() {
           placeholder="••••••••"
         />
       </div>
-      <FieldError>{state.error}</FieldError>
+      <FieldError className="text-red-400">{state.error}</FieldError>
       <Button type="submit" className="w-full" disabled={isPending}>
         {isPending ? "Ingresando…" : "Iniciar sesión"}
       </Button>

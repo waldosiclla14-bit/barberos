@@ -47,7 +47,7 @@ export function Label({ className, ...props }: LabelHTMLAttributes<HTMLLabelElem
   );
 }
 
-export function FieldError({ children }: { children?: string }) {
+export function FieldError({ className, children }: { className?: string; children?: string }) {
   if (!children) return null;
-  return <p className="mt-1.5 text-sm text-red-600">{children}</p>;
+  return <p className={cn("mt-1.5 text-sm text-red-600", className)}>{children}</p>;
 }

@@ -140,7 +140,7 @@ export default async function DashboardPage({
             </p>
             <Link
               href="/agenda"
-              className="mt-2 inline-block text-xs font-semibold text-(--accent) hover:underline"
+              className="mt-2 inline-block text-xs font-semibold text-(--accent-text) hover:underline"
             >
               Ver agenda →
             </Link>
@@ -211,7 +211,7 @@ export default async function DashboardPage({
                   {item.href && !item.done && (
                     <Link
                       href={item.href}
-                      className="text-sm font-semibold text-(--accent) hover:underline"
+                      className="text-sm font-semibold text-(--accent-text) hover:underline"
                     >
                       Completar
                     </Link>

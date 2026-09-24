@@ -32,6 +32,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     "--accent": theme.accent,
     "--accent-ink": theme.accentInk,
     "--accent-bright": theme.accentBright,
+    "--accent-text": theme.accentText,
   } as CSSProperties;
 
   return (
@@ -39,7 +40,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/85 backdrop-blur">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link href="/dashboard" className="flex items-center gap-3">
-            <span className="font-display text-lg font-semibold tracking-[0.14em] text-(--accent)">
+            <span className="font-display text-lg font-semibold tracking-[0.14em] text-(--accent-text)">
               BARBEROS
             </span>
             <span className="hidden text-sm text-zinc-500 sm:inline">

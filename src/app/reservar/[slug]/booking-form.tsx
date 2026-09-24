@@ -34,8 +34,8 @@ export function BookingForm({
   if (state.success) {
     return (
       <div className="rounded-xl border border-(--accent)/40 bg-(--accent)/10 p-6 text-center animate-fade-up">
-        <CheckCircle2 aria-hidden className="mx-auto h-9 w-9 text-(--accent)" />
-        <h2 className="font-display mt-3 text-lg font-semibold uppercase tracking-wide text-(--accent)">
+        <CheckCircle2 aria-hidden className="mx-auto h-9 w-9 text-(--accent-text)" />
+        <h2 className="font-display mt-3 text-lg font-semibold uppercase tracking-wide text-(--accent-text)">
           Reserva confirmada
         </h2>
         <p className="mt-1 text-sm text-zinc-700">

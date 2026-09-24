@@ -10,7 +10,7 @@ const goldStyle = {
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <main
-      className="relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-[--dark-bg] px-6 py-16"
+      className="relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-(--dark-bg) px-6 py-16"
       style={goldStyle}
     >
       <div

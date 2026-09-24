@@ -271,7 +271,7 @@ export default async function ReservarPage({
                     fecha,
                     hora: formatHHmm(parts.minutes),
                   })}
-                  className="rounded-xl border border-zinc-200 bg-white py-3 text-center font-bold tabular-nums text-zinc-900 transition-all duration-150 hover:border-(--accent) hover:text-(--accent) active:scale-[0.98]"
+                  className="rounded-xl border border-zinc-200 bg-white py-3 text-center font-bold tabular-nums text-zinc-900 transition-all duration-150 hover:border-(--accent) hover:text-(--accent-text) active:scale-[0.98]"
                 >
                   {formatHHmm(parts.minutes)}
                 </Link>
@@ -366,6 +366,7 @@ function Shell({
     "--accent": theme.accent,
     "--accent-ink": theme.accentInk,
     "--accent-bright": theme.accentBright,
+    "--accent-text": theme.accentText,
   } as CSSProperties;
   return (
     <main
@@ -373,10 +374,10 @@ function Shell({
       style={style}
     >
       <header className="mb-6 text-center animate-fade-up">
-        <p className="font-display text-sm font-semibold uppercase tracking-[0.3em] text-(--accent)">
+        <p className="font-display text-sm font-semibold uppercase tracking-[0.3em] text-(--accent-text)">
           BARBEROS
         </p>
-        <h1 className="mt-1 font-display text-2xl font-semibold tracking-wide text-(--accent)">
+        <h1 className="mt-1 font-display text-2xl font-semibold tracking-wide text-(--accent-text)">
           {name}
         </h1>
       </header>
@@ -410,7 +411,7 @@ function Progress({ current, total }: { current: number; total: number }) {
 function StepTitle({ step, title }: { step: number; title: string }) {
   return (
     <h2 className="font-display text-xl font-semibold uppercase tracking-wide text-zinc-900">
-      <span className="text-(--accent)">{step}.</span> {title}
+      <span className="text-(--accent-text)">{step}.</span> {title}
     </h2>
   );
 }
@@ -419,7 +420,7 @@ function BackLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="inline-block text-sm font-medium text-zinc-500 transition-colors hover:text-(--accent)"
+      className="inline-block text-sm font-medium text-zinc-500 transition-colors hover:text-(--accent-text)"
     >
       ← {label}
     </Link>
@@ -439,12 +440,12 @@ function Empty({
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-16 text-center">
       <p className="text-sm text-zinc-600">{text}</p>
       {backHref && (
-        <Link href={backHref} className="mt-4 text-sm font-semibold text-(--accent) underline">
+        <Link href={backHref} className="mt-4 text-sm font-semibold text-(--accent-text) underline">
           Volver
         </Link>
       )}
       {!backHref && !inline && (
-        <Link href="/" className="mt-4 text-sm font-semibold text-(--accent) underline">
+        <Link href="/" className="mt-4 text-sm font-semibold text-(--accent-text) underline">
           Ir al inicio
         </Link>
       )}

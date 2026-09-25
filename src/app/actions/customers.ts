@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, requireTenant } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 
 export interface CustomerFormState {
@@ -30,7 +30,7 @@ export async function createCustomerAction(
   _prev: CustomerFormState,
   formData: FormData,
 ): Promise<CustomerFormState> {
-  const auth = await requireTenant();
+  const auth = await requirePermission("customers:view");
 
   const parsed = customerSchema.safeParse({
     name: formData.get("name"),
@@ -53,6 +53,16 @@ export async function createCustomerAction(
     return {
       error: `Ya existe un cliente con ese teléfono. Busca en la lista o reprogámale su cita.`,
     };
+  }
+
+  if (
+    d.preferredBarberId &&
+    !(await prisma.barber.findFirst({
+      where: { id: d.preferredBarberId, tenantId: auth.tenant.id },
+      select: { id: true },
+    }))
+  ) {
+    return { error: "El barbero asignado no es válido." };
   }
 
   const customer = await prisma.customer.create({
@@ -115,6 +125,16 @@ export async function updateCustomerAction(
   });
   if (dup) return { error: "Otro cliente ya usa ese teléfono." };
 
+  if (
+    d.preferredBarberId &&
+    !(await prisma.barber.findFirst({
+      where: { id: d.preferredBarberId, tenantId: auth.tenant.id },
+      select: { id: true },
+    }))
+  ) {
+    return { error: "El barbero asignado no es válido." };
+  }
+
   const updated = await prisma.customer.updateMany({
     where: { id, tenantId: auth.tenant.id },
     data: {
@@ -146,7 +166,7 @@ export async function addCustomerNoteAction(
   _prev: CustomerFormState,
   formData: FormData,
 ): Promise<CustomerFormState> {
-  const auth = await requireTenant();
+  const auth = await requirePermission("customers:view");
 
   const customerId = String(formData.get("customerId") ?? "");
   const body = String(formData.get("body") ?? "").trim();

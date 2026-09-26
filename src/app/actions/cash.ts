@@ -36,24 +36,31 @@ export async function openCashSessionAction(
 
   // Re-chequea y crea dentro de una transacción: evita doble apertura
   // simultánea (TOCTOU) con dos clic seguros.
-  await prisma.$transaction(async (tx) => {
-    const fresh = await tx.cashSession.findFirst({
-      where: { tenantId: auth.tenant.id, branchId, status: "OPEN" },
-      select: { id: true },
+  try {
+    await prisma.$transaction(async (tx) => {
+      const fresh = await tx.cashSession.findFirst({
+        where: { tenantId: auth.tenant.id, branchId, status: "OPEN" },
+        select: { id: true },
+      });
+      if (fresh) throw new Error("ALREADY_OPEN");
+      return tx.cashSession.create({
+        data: {
+          tenantId: auth.tenant.id,
+          branchId,
+          openedById: auth.user.id,
+          openingCents,
+          expectedCents: openingCents,
+          status: "OPEN",
+        },
+        select: { id: true },
+      });
     });
-    if (fresh) throw new Error("ALREADY_OPEN");
-    return tx.cashSession.create({
-      data: {
-        tenantId: auth.tenant.id,
-        branchId,
-        openedById: auth.user.id,
-        openingCents,
-        expectedCents: openingCents,
-        status: "OPEN",
-      },
-      select: { id: true },
-    });
-  });
+  } catch (e) {
+    if (e instanceof Error && e.message === "ALREADY_OPEN") {
+      return { error: "Ya hay una caja abierta en esta sede." };
+    }
+    throw e;
+  }
 
   await audit({
     userId: auth.user.id,

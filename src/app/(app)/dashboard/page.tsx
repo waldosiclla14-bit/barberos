@@ -3,7 +3,8 @@ import Link from "next/link";
 import { requireTenant } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
-import { limaDayRange, todayLima } from "@/lib/scheduling/time";
+import { formatPEN } from "@/lib/utils";
+import { LIMA_TZ, formatHHmm, limaDayRange, toLimaParts, todayLima } from "@/lib/scheduling/time";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -16,6 +17,39 @@ const PLAN_STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Cancelado",
   EXPIRED: "Expirado",
 };
+
+const ACTIVITY_LABELS: Record<string, string> = {
+  CUSTOMER_CREATED: "Cliente registrado",
+  CUSTOMER_UPDATED: "Cliente actualizado",
+  CUSTOMER_NOTE_ADDED: "Nota de cliente",
+  APPOINTMENT_CREATED: "Cita creada",
+  APPOINTMENT_CONFIRMED: "Cita confirmada",
+  APPOINTMENT_COMPLETED: "Cita completada",
+  APPOINTMENT_CANCELLED: "Cita cancelada",
+  APPOINTMENT_RESCHEDULED: "Cita reprogramada",
+  SALE_CREATED: "Venta registrada",
+  CASH_OPENED: "Caja abierta",
+  CASH_CLOSED: "Caja cerrada",
+  CASH_MOVEMENT_IN: "Ingreso de caja",
+  CASH_MOVEMENT_OUT: "Egreso de caja",
+  PRODUCT_CREATED: "Producto creado",
+  PRODUCT_UPDATED: "Producto actualizado",
+  STOCK_ADJUSTED: "Stock ajustado",
+  SERVICE_CREATED: "Servicio creado",
+  SERVICE_UPDATED: "Servicio actualizado",
+  BARBER_CREATED: "Barbero registrado",
+  BARBER_UPDATED: "Barbero actualizado",
+  BARBER_SERVICES_SET: "Servicios de barbero",
+  PROMOTION_CREATED: "Promoción creada",
+  USER_LOGIN: "Inicio de sesión",
+  USER_LOGIN_DEMO: "Demo explorada",
+};
+
+function activityLabel(action: string): string {
+  return (
+    ACTIVITY_LABELS[action] ?? action.replaceAll("_", " ").toLowerCase()
+  );
+}
 
 function daysLeft(date: Date): number {
   return Math.max(
@@ -33,20 +67,62 @@ export default async function DashboardPage({
   const params = await searchParams;
   const bienvenida = "bienvenida" in params && params.bienvenida === "1";
 
-  const [userCount, branchCount, serviceCount, barberCount, todayRange, recentActivity] =
-    await Promise.all([
-      prisma.user.count({ where: { tenantId: tenant.id, isActive: true } }),
-      prisma.branch.count({ where: { tenantId: tenant.id, isActive: true } }),
-      prisma.service.count({ where: { tenantId: tenant.id, isActive: true } }),
-      prisma.barber.count({ where: { tenantId: tenant.id, isActive: true } }),
-      limaDayRange(todayLima()),
-      prisma.auditLog.findMany({
-        where: { tenantId: tenant.id },
-        orderBy: { createdAt: "desc" },
-        take: 8,
-        select: { id: true, action: true, entity: true, createdAt: true },
-      }),
-    ]);
+  const todayRange = limaDayRange(todayLima());
+  const todayFilter = todayRange
+    ? { gte: todayRange.start, lt: todayRange.end }
+    : undefined;
+
+  const [
+    userCount,
+    branchCount,
+    serviceCount,
+    barberCount,
+    recentActivity,
+    salesToday,
+    openCash,
+    upcoming,
+  ] = await Promise.all([
+    prisma.user.count({ where: { tenantId: tenant.id, isActive: true } }),
+    prisma.branch.count({ where: { tenantId: tenant.id, isActive: true } }),
+    prisma.service.count({ where: { tenantId: tenant.id, isActive: true } }),
+    prisma.barber.count({ where: { tenantId: tenant.id, isActive: true } }),
+    prisma.auditLog.findMany({
+      where: { tenantId: tenant.id },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      select: { id: true, action: true, entity: true, createdAt: true },
+    }),
+    prisma.sale.aggregate({
+      where: {
+        tenantId: tenant.id,
+        status: "PAID",
+        createdAt: todayFilter,
+      },
+      _sum: { totalCents: true },
+      _count: { _all: true },
+    }),
+    prisma.cashSession.count({
+      where: { tenantId: tenant.id, status: "OPEN" },
+    }),
+    todayRange
+      ? prisma.appointment.findMany({
+          where: {
+            tenantId: tenant.id,
+            startsAt: { gte: todayRange.start, lt: todayRange.end },
+            status: { in: ["PENDING", "CONFIRMED", "CHECKED_IN", "IN_SERVICE"] },
+          },
+          orderBy: { startsAt: "asc" },
+          take: 5,
+          select: {
+            id: true,
+            startsAt: true,
+            status: true,
+            customer: { select: { name: true } },
+            barber: { select: { displayName: true } },
+          },
+        })
+      : [],
+  ]);
 
   const todayAppointments = todayRange
     ? await prisma.appointment.groupBy({
@@ -114,7 +190,7 @@ export default async function DashboardPage({
         </div>
       )}
 
-      <section aria-label="Estado de suscripción" className="grid gap-4 sm:grid-cols-3">
+      <section aria-label="Métricas de hoy" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardBody>
             <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
@@ -126,6 +202,36 @@ export default async function DashboardPage({
               {tenant.trialEndsAt &&
                 ` · ${daysLeft(tenant.trialEndsAt)} días restantes`}
             </p>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody>
+            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Ventas hoy
+            </p>
+            <p className="mt-1 text-xl font-bold text-zinc-900">
+              {formatPEN((salesToday._sum.totalCents ?? 0) / 100)}
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              {salesToday._count._all}{" "}
+              {salesToday._count._all === 1 ? "venta cobrada" : "ventas cobradas"}
+              {" · "}
+              {openCash > 0 ? (
+                <span className="font-semibold text-green-700">
+                  Caja abierta
+                </span>
+              ) : (
+                <span className="font-semibold text-amber-700">
+                  Caja cerrada
+                </span>
+              )}
+            </p>
+            <Link
+              href="/ventas"
+              className="mt-2 inline-block text-xs font-semibold text-(--accent-text) hover:underline"
+            >
+              Ir a ventas →
+            </Link>
           </CardBody>
         </Card>
         <Card>
@@ -158,22 +264,15 @@ export default async function DashboardPage({
               {userCount} {userCount === 1 ? "usuario" : "usuarios"}
             </p>
             <p className="mt-1 text-xs text-zinc-500">
-              Gestión de usuarios avanzada disponible próximamente
+              Progreso de configuración: {progress}%
             </p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody>
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-              Progreso de configuración
-            </p>
-            <p className="mt-1 text-xl font-bold text-zinc-900">{progress}%</p>
             <div
               className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-100"
               role="progressbar"
               aria-valuenow={progress}
               aria-valuemin={0}
               aria-valuemax={100}
+              aria-label="Progreso de configuración"
             >
               <div
                 className="h-full rounded-full bg-(--accent) transition-all"
@@ -185,6 +284,87 @@ export default async function DashboardPage({
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Próximas citas de hoy</CardTitle>
+          </CardHeader>
+          <CardBody>
+            {upcoming.length === 0 ? (
+              <p className="py-6 text-center text-sm text-zinc-500">
+                No quedan citas pendientes hoy.
+              </p>
+            ) : (
+              <ul className="divide-y divide-zinc-100">
+                {upcoming.map((appt) => {
+                  const hhmm = formatHHmm(toLimaParts(appt.startsAt).minutes);
+                  return (
+                    <li
+                      key={appt.id}
+                      className="flex items-center justify-between gap-3 py-2 text-sm"
+                    >
+                      <span className="font-bold tabular-nums text-zinc-900">
+                        {hhmm}
+                      </span>
+                      <span className="flex-1 truncate font-medium text-zinc-800">
+                        {appt.customer?.name ?? "Sin cliente"}
+                        <span className="ml-1 font-normal text-zinc-500">
+                          · {appt.barber?.displayName ?? "Por asignar"}
+                        </span>
+                      </span>
+                      <Link
+                        href="/agenda"
+                        className="shrink-0 text-xs font-semibold text-(--accent-text) hover:underline"
+                      >
+                        Ver
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Actividad reciente</CardTitle>
+          </CardHeader>
+          <CardBody>
+            {recentActivity.length === 0 ? (
+              <p className="py-6 text-center text-sm text-zinc-500">
+                Todavía no hay actividad registrada.
+              </p>
+            ) : (
+              <ul className="divide-y divide-zinc-100">
+                {recentActivity.map((log) => (
+                  <li key={log.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                    <span className="font-medium text-zinc-800">
+                      {activityLabel(log.action)}
+                      <span className="ml-1 font-normal text-zinc-500">
+                        · {log.entity}
+                      </span>
+                    </span>
+                    <time
+                      dateTime={log.createdAt.toISOString()}
+                      className="whitespace-nowrap text-xs text-zinc-400"
+                    >
+                      {log.createdAt.toLocaleString("es-PE", {
+                        timeZone: LIMA_TZ,
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </time>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardBody>
+        </Card>
+      </section>
+
+      <section aria-label="Configuración inicial">
         <Card>
           <CardHeader>
             <CardTitle>Configuración inicial</CardTitle>
@@ -219,43 +399,6 @@ export default async function DashboardPage({
                 </li>
               ))}
             </ul>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Actividad reciente</CardTitle>
-          </CardHeader>
-          <CardBody>
-            {recentActivity.length === 0 ? (
-              <p className="py-6 text-center text-sm text-zinc-500">
-                Todavía no hay actividad registrada.
-              </p>
-            ) : (
-              <ul className="divide-y divide-zinc-100">
-                {recentActivity.map((log) => (
-                  <li key={log.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                    <span className="font-medium text-zinc-800">
-                      {log.action.replaceAll("_", " ").toLowerCase()}
-                      <span className="ml-1 font-normal text-zinc-500">
-                        · {log.entity}
-                      </span>
-                    </span>
-                    <time
-                      dateTime={log.createdAt.toISOString()}
-                      className="whitespace-nowrap text-xs text-zinc-400"
-                    >
-                      {log.createdAt.toLocaleString("es-PE", {
-                        day: "2-digit",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </time>
-                  </li>
-                ))}
-              </ul>
-            )}
           </CardBody>
         </Card>
       </section>

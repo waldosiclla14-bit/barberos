@@ -2,7 +2,7 @@
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { createPrismaAdapter } from "../src/lib/db-adapters";
-import { addDaysToKey, todayLima, limaToUTC, parseDateKey } from "../src/lib/scheduling/time";
+import { addDaysToKey, todayLima, limaToUTC, parseDateKey, weekdayOfKey } from "../src/lib/scheduling/time";
 import { spawnSync } from "node:child_process";
 
 const prisma = new PrismaClient({ adapter: createPrismaAdapter(process.env.DATABASE_URL!) });
@@ -25,10 +25,19 @@ async function main() {
     select: { id: true, name: true },
   });
 
-  // Hora Lima: 15:00 (dentro del horario 10:00-19:00) del día siguiente,
-  // construida con la TZ de Lima para ser independiente de la del servidor.
-  const tomorrowKey = addDaysToKey(todayLima(), 1);
-  const pk = parseDateKey(tomorrowKey);
+  // Hora Lima: 15:00 (dentro del horario 10:00-19:00) del próximo día
+  // con atención (salta domingos cerrados), construida con la TZ de Lima
+  // para ser independiente de la del servidor.
+  let dayKey = addDaysToKey(todayLima(), 1);
+  for (let i = 0; i < 7; i++) {
+    const closed = await prisma.branchSchedule.findFirst({
+      where: { branchId: branch.id, weekday: weekdayOfKey(dayKey) },
+      select: { isClosed: true },
+    });
+    if (!closed?.isClosed) break;
+    dayKey = addDaysToKey(dayKey, 1);
+  }
+  const pk = parseDateKey(dayKey);
   if (!pk) throw new Error("Fecha inválida");
   const starts = limaToUTC(pk.y, pk.m, pk.d, 15 * 60);
 

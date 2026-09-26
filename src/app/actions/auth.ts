@@ -185,3 +185,38 @@ export async function logoutAction() {
   await destroySession();
   redirect("/login");
 }
+
+/**
+ * Acceso a la demo con un clic: inicia sesión con el usuario demo
+ * sembrado (demo@barberos.pe). Falla cerrado si ese usuario no existe
+ * (p. ej. producción sin seed), sin exponer nada.
+ */
+export async function loginDemoAction(
+  _prev: AuthFormState,
+): Promise<AuthFormState> {
+  void _prev;
+  const user = await prisma.user.findUnique({
+    where: { email: "demo@barberos.pe" },
+    select: { id: true, tenantId: true, isActive: true, role: true },
+  });
+  if (!user || !user.isActive || user.role !== "OWNER") {
+    return { error: "La demo no está disponible en este entorno." };
+  }
+
+  const meta = await requestMeta();
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() },
+  });
+  await audit({
+    userId: user.id,
+    tenantId: user.tenantId,
+    action: "USER_LOGIN_DEMO",
+    entity: "User",
+    entityId: user.id,
+    ip: meta.ip,
+  });
+
+  await createSession(user.id, meta);
+  redirect("/dashboard");
+}

@@ -2,26 +2,26 @@ import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import { requireTenant } from "@/lib/auth/session";
 import { logoutAction } from "@/app/actions/auth";
-import { ROLE_LABELS, type Role } from "@/lib/auth/rbac";
+import { ROLE_LABELS, hasPermission, type Permission, type Role } from "@/lib/auth/rbac";
 import { AppNav, type NavItem } from "@/components/app-nav";
 import { themeFor } from "@/lib/themes";
 
 // FASE 4: ventas (POS), caja y comisiones. FASE 5: inventario. FASE 8: IA. FASE 9: marketplace.
-const NAV_ITEMS: NavItem[] = [
+const NAV_ITEMS: { href: string; label: string; permission?: Permission }[] = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/agenda", label: "Agenda" },
-  { href: "/clientes", label: "Clientes" },
-  { href: "/ventas", label: "Ventas" },
-  { href: "/caja", label: "Caja" },
-  { href: "/inventario", label: "Inventario" },
-  { href: "/comisiones", label: "Comisiones" },
-  { href: "/promociones", label: "Promociones" },
-  { href: "/notificaciones", label: "Notificaciones" },
-  { href: "/ia", label: "Asistente IA" },
-  { href: "/marketplace", label: "Marketplace" },
+  { href: "/clientes", label: "Clientes", permission: "customers:view" },
+  { href: "/ventas", label: "Ventas", permission: "sales:view" },
+  { href: "/caja", label: "Caja", permission: "cash:manage" },
+  { href: "/inventario", label: "Inventario", permission: "inventory:view" },
+  { href: "/comisiones", label: "Comisiones", permission: "reports:view" },
+  { href: "/promociones", label: "Promociones", permission: "promotions:view" },
+  { href: "/notificaciones", label: "Notificaciones", permission: "reports:view" },
+  { href: "/ia", label: "Asistente IA", permission: "ai:view" },
+  { href: "/marketplace", label: "Marketplace", permission: "settings:view" },
   { href: "/sedes", label: "Sedes" },
-  { href: "/servicios", label: "Servicios" },
-  { href: "/barberos", label: "Barberos" },
+  { href: "/servicios", label: "Servicios", permission: "services:view" },
+  { href: "/barberos", label: "Barberos", permission: "barbers:view" },
   { href: "/configuracion", label: "Configuración" },
 ];
 
@@ -34,6 +34,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     "--accent-bright": theme.accentBright,
     "--accent-text": theme.accentText,
   } as CSSProperties;
+
+  const navItems: NavItem[] = NAV_ITEMS.filter(
+    (item) => !item.permission || hasPermission(user.role, item.permission),
+  ).map(({ href, label }) => ({ href, label }));
 
   return (
     <div className="flex min-h-dvh flex-col" style={themeStyle}>
@@ -66,7 +70,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 md:flex-row">
         <aside className="md:w-56 md:shrink-0">
-          <AppNav items={NAV_ITEMS} />
+          <AppNav items={navItems} />
         </aside>
         <main className="min-w-0 flex-1">{children}</main>
       </div>
